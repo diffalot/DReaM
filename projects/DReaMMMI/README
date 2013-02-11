@@ -1,0 +1,38 @@
+Overview
+------------------------------------------------
+DReaM-MMI protocol provides a method for ascertaining rights between a DRM 
+client and server.  For more details on the protocol, please refer to the 
+"DReaM-MMI Specification"
+
+Directory Structure
+--------------------------------------------------
+ DReaMMMI
+  |
+  +-client
+  +-common
+  +-tests
+     | 
+     +-client
+
+DReaMMMI/client - Please refer to README found in that directory 
+
+DReaMMMI/common - contains the API which implements methods to generate and 
+parse MMI messages for client/server as defined in the "DReaM-MMI 
+Specification"
+
+DReaMMMI/tests/client - a sample test client which creates a simple MMI 
+Message, sends the message to server through HTTP, and parses the MMI 
+response.
+
+Building
+--------------------------------------------------
+NetBeans 5 project files are located in each of the above directories 
+(or subdirectories).  Each client application has a dependency on the 
+MMICommon project so please modify any reference problems, if any, 
+to point to correct location of the MMICommon project.
+
+Running
+---------------------------------------------------
+To run the sample test client, 
+
+java -jar MMIClient.jar http://myserver:8080/DReaMLicensor/LicenseServer

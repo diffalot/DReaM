@@ -1,0 +1,17 @@
+BUILD Instructions
+------------------
+(1) Ensure that libcurl (v7.13.1 preferrably) is installed on the system
+(libcurl must be downloaded and installed separately and is not distributed
+with this package.)
+
+(2)Ensure the libtools is installed on your system. Then execute 
+# ./bootstrap
+
+(3) Execute configure to generate the Makefiles
+# ./configure
+
+(4) Execute "make" to build the files
+# make
+
+(5) Do a "make install" to install the headers and the libraries 
+# make install 

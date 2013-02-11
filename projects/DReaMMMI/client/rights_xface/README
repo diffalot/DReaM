@@ -1,0 +1,4 @@
+Contains the source code and native interfaces that native applications can
+use to request/verify rights from the MMI rights manager java library.
+
+See INSTALL for build instructions.

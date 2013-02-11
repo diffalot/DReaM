@@ -1,0 +1,5 @@
+rm -f config.cache acconfig.h
+
+libtoolize --force --copy && aclocal && sed  -e 's/\(.*\)\(lCstd.*lCrun\)/#\1\2/'  aclocal.m4 > tmpaclocal.m4 && mv tmpaclocal.m4 aclocal.m4 && autoconf && automake --add-missing --copy && exit 0
+
+exit 1

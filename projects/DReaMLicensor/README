@@ -1,0 +1,69 @@
+======================================================================
+DReaMLicensor README
+======================================================================
+----------------------------
+Overview
+----------------------------
+The DReaMLicensor consists of two components: A servlet-based license 
+server and a database which serves as a repository of licenses. Each 
+license in the database is bound to a combination of userId, shopId, 
+and contentId.  The license server provides a web application to add or 
+retrieve licenses from the database repository.
+
+
+----------------------------
+Configuration
+----------------------------
+** Database:
+The <database> element in web-inf/conf/license-server.xml, specifies 
+the database that the license server will connect to. The sample 
+configuration works with a pointbase database.
+
+<database>
+	<drivername>com.pointbase.jdbc.jdbcUniversalDriver</drivername>
+	<databaseurl>jdbc:PointBase://localhost:9092/sample</databaseurl>
+	<username>PBPUBLIC</username>
+	<password>PBPUBLIC</password>
+	<listTableSql>select * from systables</listTableSql>
+	<tableNameColumnNumber>2</tableNameColumnNumber>
+</database>
+
+If the above configuration is used, a local Pointbase database must be 
+started before accessing the license server web application.
+
+The license server uses a table called "sunlslicenses" to store 
+the licenses. If the sunlslicenses table exists, the license server will 
+use the existing table. Else,the license server will create a new table.
+Separate database initialization scripts are not needed to initialize 
+the sunlslicenses table.
+ 
+** Apache Tomcat - 
+ 
+There is a simple admin UI which Adds and Retrieves licenses which can 
+be accessed at: http://tomcatserver:8080/LicenseServer/
+ 
+The request for a license from the video client should be in the 
+following format:
+ 
+http://tomcatserver:8080/LicenseServer/LicenseServer?
+action=get_license&cas=1&content_id=javacar&userid=user1&shopid=shop1
+ 
+The content_id, userid, and shopid are sent to the license server and 
+the EMM or License is returned in response.
+ 
+
+
+----------------------------
+Additional libraries needed
+----------------------------
+1) Database JDBC Driver: The JAR file containing the appropriate JDBC
+driver for the database being used, must be placed in the tomcat or
+application server's classpath. 
+The driver com.pointbase.jdbc.jdbcUniversalDriver used in the sample 
+configuration, is available in the pbembedded.jar file from the relevant 
+pointbase version.
+
+2) commons-fileupload: The commons-fileupload-1.0.jar is used to
+support the uploading of the binary license files. Hence you would need
+to download that file from http://jakarta.apache.org/commons/fileupload/
+and add it to the tomcat or application server's classpath.

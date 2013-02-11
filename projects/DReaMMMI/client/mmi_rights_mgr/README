@@ -1,0 +1,17 @@
+MMI client code README
+-----------------------
+
+The client code contains two major classes:
+- MMIRightsManager
+- MMIClient
+
+MMIRightsManager manages MMI rights on the client side. A client application
+can query the MMIRightsManager to check if the application has rights to
+perform certain functions. The MMIRightsManager may satisfy the request by
+referring to its internal repository if it already contains this information
+or it may formulate requests using the MMI protocol to get this information
+from the server.
+
+MMIClient implements code that is used to communicate with the MMIServer.
+Connectivity with the MMIServer can be tested using the instructions in the
+INSTALL file.

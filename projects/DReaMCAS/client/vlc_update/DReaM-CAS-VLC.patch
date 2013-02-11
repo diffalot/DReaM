@@ -1,0 +1,2261 @@
+diff -u'rNF^function' vlc-0.8.2/configure.ac mmi-vlc-0.8.2/configure.ac
+--- vlc-0.8.2/configure.ac	2005-06-25 06:43:16.000000000 -0700
++++ mmi-vlc-0.8.2/configure.ac	2006-07-31 02:57:58.000000000 -0700
+@@ -2043,17 +2043,24 @@
+       LDFLAGS="${LDFLAGS_save} ${LDFLAGS_ffmpeg}"
+       AC_CHECK_HEADERS(ffmpeg/avcodec.h, [], [AC_MSG_ERROR([Missing header file ffmpeg/avcodec.h.])] )
+       AC_CHECK_HEADERS(postproc/postprocess.h, [], [AC_MSG_ERROR([Missing header file postproc/postprocess.h.])] )
++
++      AC_CHECK_LIB(avutil, av_add_i, [
++        VLC_ADD_LDFLAGS([ffmpeg],[-lavutil])
++        LDAVUTIL="-lavutil"])
++
+       AC_CHECK_LIB(avcodec, avcodec_init, [
+         VLC_ADD_BUILTINS([ffmpeg])
++
++
+         VLC_ADD_LDFLAGS([ffmpeg],[-lavcodec])
+         if test "${enable_sout}" != "no"; then
+             VLC_ADD_BUILTINS([stream_out_switcher])
+         fi],
+-         [ AC_MSG_ERROR([Could not find ffmpeg on your system: you may get it from http://ffmpeg.sf.net/ (cvs version is recommended). Alternatively you can use --disable-ffmpeg to disable the ffmpeg plugins.]) ])
++         [ AC_MSG_ERROR([Could not find ffmpeg on your system: you may get it from http://ffmpeg.sf.net/ (cvs version is recommended). Alternatively you can use --disable-ffmpeg to disable the ffmpeg plugins.]) ], [$LDAVUTIL])
+       AC_CHECK_LIB(avformat, av_open_input_stream, [
+         AC_DEFINE(HAVE_LIBAVFORMAT, 1,
+         [Define if you have ffmpeg's libavformat.])
+-        VLC_ADD_LDFLAGS([ffmpeg],[-lavformat -lz]) ], [], [-lavcodec -lz])
++        VLC_ADD_LDFLAGS([ffmpeg],[-lavformat -lz]) ], [], [-lavcodec -lz $LDAVUTIL])
+       LDFLAGS="${LDFLAGS_save}"
+       CPPFLAGS="${CPPFLAGS_save}"
+     fi
+@@ -2116,6 +2123,12 @@
+       if test "${enable_sout}" != "no"; then
+           VLC_ADD_BUILTINS([stream_out_switcher])
+       fi
++
++      if test -f "${real_ffmpeg_tree}/libavutil/libavutil.a"; then
++        VLC_ADD_LDFLAGS([ffmpeg],[-L${real_ffmpeg_tree}/libavutil ${real_ffmpeg_tree}/libavutil/libavutil.a])
++        VLC_ADD_CPPFLAGS([ffmpeg stream_out_switcher],[-I${real_ffmpeg_tree}/libavutil])
++      fi
++
+       VLC_ADD_LDFLAGS([ffmpeg],[-L${real_ffmpeg_tree}/libavcodec ${real_ffmpeg_tree}/libavcodec/libavcodec.a])
+       VLC_ADD_CPPFLAGS([ffmpeg stream_out_switcher],[-I${real_ffmpeg_tree}/libavcodec])
+ 
+@@ -3991,6 +4004,162 @@
+   AC_CHECK_HEADER(linux/joystick.h, [VLC_ADD_PLUGINS([joystick])])
+ fi
+ 
++dnl  cas plugin and its support libraries
++dnl  -------------------------------------
++dnl  cas plugin is dynamically compiled with vlc. cas requires:
++dnl  - cacrypto headers and library
++dnl  - cadec header and library
++dnl  - libssl library
++dnl  - libcurl library
++dnl
++AC_ARG_ENABLE(cas,
++  [  --enable-cas       cas support (default disabled)])
++have_cadec="false"
++have_cacrypto="false"
++cadec_tree=""
++cacrypto_tree=""
++if test "${enable_cas}" = "yes"; then
++
++    dnl Testing for cacrypto library and headers
++    AC_ARG_WITH(cacrypto,
++                 [--with-cacrypto=PATH cacrypto headers and libraries (required for enable-cas)]
++                )
++    if test -n "${with_cacrypto}";
++    then
++        AC_MSG_CHECKING(for libcacrypto in ${with_cacrypto}/lib)
++        cacrypto_tree="`cd ${with_cacrypto} 2>/dev/null && pwd`"
++        if test -z "${cacrypto_tree}"; then
++            AC_MSG_ERROR([cannot cd to ${cacrypto_tree}]) 
++        fi
++        if test -f "${cacrypto_tree}/lib/libcacrypto.so"; then
++            AC_MSG_RESULT(${cacrypto_tree}/lib/libcacrypto.so)
++        else
++            AC_MSG_RESULT(no)
++            AC_MSG_ERROR([cannot find ${cacrypto_tree}/lib/libcacrypto.so in ${with_cacrypto}])
++        fi
++
++        AC_MSG_CHECKING(for cacrypto/crypto.h in ${with_cacrypto}/include)
++        if test -f "${cacrypto_tree}/include/ca_crypto/crypto.h"; then
++            AC_MSG_RESULT(${cacrypto_tree}/include/ca_crypto/crypto.h)
++        else
++            AC_MSG_RESULT(no)
++            AC_MSG_ERROR([cannot find ${cacrypto_tree}/include/cacrypto/crypto.h in ${with_cacrypto}])
++        fi
++        have_cacrypto="true"
++    else
++        AC_CHECK_LIB(cacrypto,decryptBufferData,[],
++                 [AC_MSG_ERROR([cacrypto library: libcacrypto required for enable-cas])])
++        AC_CHECK_HEADER([ca_crypto/crypto.h],[have_cacrypto="true"],[AC_MSG_ERROR([Cannot find ca_crypto/crypto.h (required for enable-cas)])])
++        cacrypto_tree=""
++    fi 
++    
++    dnl Testing for libcurl. cadec requires libcurl
++    AC_CHECK_LIB(curl,curl_easy_init,[], [AC_MSG_ERROR([libcurl required for cas support])])
++    
++    dnl Testing for libssl. cacrypto requires libssl
++    AC_CHECK_LIB(ssl, EVP_aes_128_cfb,[], [AC_MSG_ERROR([libssl required for cas support])])
++    
++    dnl Testing for cadec library and headers
++    AC_ARG_WITH(cadec,
++                 [--with-cadec=PATH cadec headers and libraries (required for enable-cas)]
++                )
++    if test -n "${with_cadec}";
++    then
++        AC_MSG_CHECKING(for libcadec in ${with_cadec}/lib (for -enable-cas))
++        cadec_tree="`cd ${with_cadec} 2>/dev/null && pwd`"
++        if test -z "${cadec_tree}"; then
++            AC_MSG_ERROR([cannot cd to ${cadec_tree}]) 
++        fi
++        if test -f "${cadec_tree}/lib/libcadec.so"; then
++            AC_MSG_RESULT(${cadec_tree}/lib/libcadec.so)
++            cadec_LDFLAGS="-L${cadec_tree}/lib -lcadec"
++            AC_SUBST(cadec_LDFLAGS)
++        else
++            AC_MSG_RESULT(no)
++            AC_MSG_ERROR([cannot find ${cadec_tree}/lib/libcadec.so in ${with_cadec}])
++        fi
++
++        AC_MSG_CHECKING(for ca_dec/ca_dec.h in ${with_cadec}/include)
++        if test -f "${cadec_tree}/include/ca_dec/ca_dec.h"; then
++            AC_MSG_RESULT(${cadec_tree}/include/ca_dec/ca_dec.h)
++            cadec_CPPFLAGS="-I${cadec_tree}/include"
++            AC_SUBST(cadec_CPPFLAGS)
++        else
++            AC_MSG_RESULT(no)
++            AC_MSG_ERROR([cannot find ${cadec_tree}/include/ca_dec/ca_dec.h in ${with_cadec}])
++        fi
++        have_cadec="true"
++    else
++        AC_CHECK_LIB(cadec,casParseTS,[],
++                 [AC_MSG_ERROR([cadec library: libcadec required for enable-cas])])
++        AC_CHECK_HEADER([ca_dec/ca_dec.h],[have_cadec="true"],[AC_MSG_ERROR([Cannot find ca_dec/ca_dec.h, exiting (required for enable-cas])])
++        cadec_tree=""
++    fi 
++    
++    dnl setting up LDFLAGS 
++    if test "${have_cadec}" = "true" -a "${have_cacrypto}" = "true"; then
++        AC_DEFINE(HAVE_CAS, 1, define if we have CAS support)
++        VLC_ADD_PLUGINS([cas])
++        if test "${cadec_tree}" != "" -a "${cacrypto_tree}" != ""; then
++            VLC_ADD_LDFLAGS([vlc ts dvb], [-L${cadec_tree}/lib -lcadec -L${cacrypto_tree}/lib -lcacrypto -lssl -lcurl])
++            VLC_ADD_CPPFLAGS([vlc ts dvb], [-I${cadec_tree}/include -I${cacrypto_tree}/include])
++        else
++            VLC_ADD_LDFLAGS([vlc ts dvb],[-lcadec -lcacrypto -lssl -lcurl])
++        fi 
++    fi
++fi
++
++dnl
++dnl RIGHTS_XFACE support
++dnl (very preliminary..)
++dnl
++AC_ARG_ENABLE(rightsxface,
++  [  --enable-rightsxface       rights support (default disabled)])
++have_rights_xface="false"
++rightsxface_tree=""
++if test "${enable_rightsxface}" = "yes"; then
++    AC_ARG_WITH(rightsxface,
++                --with-rightsxface=PATH rights access interface (required for rightsxface)]
++                )
++    if test -n "${with_rightsxface}";
++    then
++        AC_MSG_CHECKING(for librightsxface.so in ${with_rightsxface}/lib)
++        rightsxface_tree="`cd ${with_rightsxface} 2>/dev/null && pwd`"
++        if test -z "${rightsxface_tree}"; then
++            AC_MSG_ERROR([cannot cd to ${rightsxface_tree}])
++        fi
++        if test -f "${rightsxface_tree}/lib/librightsxface.so"; then
++            AC_MSG_RESULT(${rightsxface_tree}/lib/librightsxface.so)
++        else
++            AC_MSG_RESULT(no)
++        fi
++
++        AC_MSG_CHECKING(for rights_xface.h in ${with_rightsxface}/include/rights_xface/rights_xface.h)
++        if test -f "${rightsxface_tree}/include/rights_xface/rights_xface.h"; then
++            AC_MSG_RESULT(${rightsxface_tree}/include/rights_xface/rights_xface.h)
++            rightsxface_CPPFLAGS="-I${rightsxface_tree}/include/rights_xface/rights_xface.h"
++            AC_SUBST(rightsxface_CPPFLAGS)
++        else
++            AC_MSG_RESULT(no)
++            AC_MSG_ERROR([cannot find ${rightsxface_tree}/include/rights_xface/rights_xface.h])
++        fi
++    else
++        AC_CHECK_LIB(rightsxface, canDoAction,[], 
++              [AC_MSG_ERROR([rightsxface library: librightsxface required for enable-rightsxface])])
++        AC_CHECK_HEADER([rights_xface/rights_xface.h],[],
++           [AC_MSG_ERROR([Cannot find rights_xface/rights_xface.h, exiting (required for enable-rightsxface)])])
++    fi
++
++    AC_DEFINE(HAVE_RIGHTS_XFACE, 1, define if we have rights xface support )
++    VLC_ADD_PLUGINS([rightsxface])
++    if test "$rightsxface_tree" != ""; then
++        VLC_ADD_LDFLAGS([vlc wxwindows], [-L${rightsxface_tree}/lib -lrightsxface])
++        VLC_ADD_CPPFLAGS([vlc wxwindows], [-I${rightsxface_tree}/include])
++    else
++        VLC_ADD_LDFLAGS([vlc wxwindows], [-lrightsxface])
++    fi
++fi
++
+ dnl
+ dnl corba (ORBit) plugin
+ dnl
+diff -u'rNF^function' vlc-0.8.2/include/vlc_access.h mmi-vlc-0.8.2/include/vlc_access.h
+--- vlc-0.8.2/include/vlc_access.h	2005-06-25 06:43:15.000000000 -0700
++++ mmi-vlc-0.8.2/include/vlc_access.h	2006-07-31 02:57:58.000000000 -0700
+@@ -2,7 +2,7 @@
+  * vlc_access.h
+  *****************************************************************************
+  * Copyright (C) 1999-2004 VideoLAN
+- * $Id: DReaM-CAS-VLC.patch,v 1.3 2006/07/31 18:47:25 gautamvsg Exp $
++ * $Id: DReaM-CAS-VLC.patch,v 1.3 2006/07/31 18:47:25 gautamvsg Exp $
+  *
+  * Authors: Laurent Aimar <fenrir@via.ecp.fr>
+  *
+@@ -32,10 +32,11 @@
+ enum access_query_e
+ {
+     /* capabilities */
+-    ACCESS_CAN_SEEK,        /* arg1= vlc_bool_t*    cannot fail */
+-    ACCESS_CAN_FASTSEEK,    /* arg1= vlc_bool_t*    cannot fail */
+-    ACCESS_CAN_PAUSE,       /* arg1= vlc_bool_t*    cannot fail */
+-    ACCESS_CAN_CONTROL_PACE,/* arg1= vlc_bool_t*    cannot fail */
++    ACCESS_CAN_SEEK,          /* arg1= vlc_bool_t*    cannot fail */
++    ACCESS_CAN_FASTSEEK,      /* arg1= vlc_bool_t*    cannot fail */
++    ACCESS_CAN_PAUSE,         /* arg1= vlc_bool_t*    cannot fail */
++    ACCESS_CAN_SUPPORT_TRICK, /* arg1= vlc_boot_t*    cannot fail */
++    ACCESS_CAN_CONTROL_PACE,  /* arg1= vlc_bool_t*    cannot fail */
+ 
+     /* */
+     ACCESS_GET_MTU,         /* arg1= int*           cannot fail(0 if no sense)*/
+@@ -47,6 +48,8 @@
+ 
+     /* */
+     ACCESS_SET_PAUSE_STATE, /* arg1= vlc_bool_t     can fail */
++    
++    ACCESS_SET_SCALE,       /* arg1= int            can fail */
+ 
+     /* */
+     ACCESS_SET_TITLE,       /* arg1= int            can fail */
+diff -u'rNF^function' vlc-0.8.2/include/vlc_demux.h mmi-vlc-0.8.2/include/vlc_demux.h
+--- vlc-0.8.2/include/vlc_demux.h	2005-06-25 06:43:15.000000000 -0700
++++ mmi-vlc-0.8.2/include/vlc_demux.h	2006-07-31 02:57:58.000000000 -0700
+@@ -104,8 +104,10 @@
+     /* II. Specific access_demux queries */
+     DEMUX_CAN_PAUSE,            /* arg1= vlc_bool_t*    cannot fail */
+     DEMUX_CAN_CONTROL_PACE,     /* arg1= vlc_bool_t*    cannot fail */
++    DEMUX_CAN_SUPPORT_TRICK,     /* arg1= vlc_bool_t*    cannot fail */
+     DEMUX_GET_PTS_DELAY,        /* arg1= int64_t*       cannot fail */
+     DEMUX_SET_PAUSE_STATE, /* arg1= vlc_bool_t     can fail */
++    DEMUX_SET_SCALE,       /* arg1= float            can fail */
+ };
+ 
+ /* stream_t *s could be null and then it mean a access+demux in one */
+diff -u'rNF^function' vlc-0.8.2/include/vlc_input.h mmi-vlc-0.8.2/include/vlc_input.h
+--- vlc-0.8.2/include/vlc_input.h	2005-06-25 06:43:15.000000000 -0700
++++ mmi-vlc-0.8.2/include/vlc_input.h	2006-07-31 02:57:58.000000000 -0700
+@@ -279,6 +279,8 @@
+ {
+     INIT_S,
+     PLAYING_S,
++    FFWD_S,
++    RWND_S,
+     PAUSE_S,
+     END_S,
+ };
+@@ -315,7 +317,8 @@
+     /* Properties */
+     vlc_bool_t b_can_pace_control;
+     vlc_bool_t b_can_pause;
+-    vlc_bool_t b_eof;   /* eof of demuxer */
++    vlc_bool_t b_eof;   
++    vlc_bool_t b_can_support_trick; /* eof of demuxer */
+ 
+     /* Clock average variation */
+     int     i_cr_average;
+@@ -351,6 +354,7 @@
+     vlc_bool_t  b_eof;
+     vlc_bool_t  b_can_pace_control;
+     vlc_bool_t  b_can_pause;
++    vlc_bool_t  b_can_support_trick;
+ 
+     /* Global state */
+     int         i_state;
+diff -u'rNF^function' vlc-0.8.2/logging.properties mmi-vlc-0.8.2/logging.properties
+--- vlc-0.8.2/logging.properties	1969-12-31 16:00:00.000000000 -0800
++++ mmi-vlc-0.8.2/logging.properties	2006-07-31 02:57:58.000000000 -0700
+@@ -0,0 +1,55 @@
++############################################################
++#  	Default Logging Configuration File
++#
++# You can use a different file by specifying a filename
++# with the java.util.logging.config.file system property.  
++# For example java -Djava.util.logging.config.file=myfile
++############################################################
++
++############################################################
++#  	Global properties
++############################################################
++
++# "handlers" specifies a comma separated list of log Handler 
++# classes.  These handlers will be installed during VM startup.
++# Note that these classes must be on the system classpath.
++# By default we only configure a ConsoleHandler, which will only
++# show messages at the INFO and above levels.
++# handlers= java.util.logging.FileHandler
++
++# To also add the FileHandler, use the following line instead.
++handlers= java.util.logging.FileHandler, java.util.logging.ConsoleHandler
++
++# Default global logging level.
++# This specifies which kinds of events are logged across
++# all loggers.  For any given facility this global level
++# can be overriden by a facility specific level
++# Note that the ConsoleHandler also has a separate level
++# setting to limit messages printed to the console.
++.level= ALL
++
++############################################################
++# Handler specific properties.
++# Describes specific configuration info for Handlers.
++############################################################
++
++# default file output is in user's home directory.
++java.util.logging.FileHandler.level = ALL
++java.util.logging.FileHandler.pattern = %h/java%u.log
++java.util.logging.FileHandler.limit = 50000
++java.util.logging.FileHandler.count = 1
++java.util.logging.FileHandler.formatter = java.util.logging.SimpleFormatter
++
++# Limit the message that are printed on the console to INFO and above.
++java.util.logging.ConsoleHandler.level = INFO
++java.util.logging.ConsoleHandler.formatter = java.util.logging.SimpleFormatter
++
++
++############################################################
++# Facility specific properties.
++# Provides extra control for each logger.
++############################################################
++
++# For example, set the com.xyz.foo logger to only log SEVERE
++# messages:
++com.xyz.foo.level = SEVERE
+diff -u'rNF^function' vlc-0.8.2/modules/control/rc.c mmi-vlc-0.8.2/modules/control/rc.c
+--- vlc-0.8.2/modules/control/rc.c	2005-06-25 06:43:06.000000000 -0700
++++ mmi-vlc-0.8.2/modules/control/rc.c	2006-07-31 02:57:58.000000000 -0700
+@@ -976,8 +976,13 @@
+         if( p_item )
+         {
+             msg_rc( "trying to add %s to playlist\n", newval.psz_string );
+-            playlist_AddItem( p_playlist, p_item,
++            /* Changing to not go immediately to added item */
++/*            playlist_AddItem( p_playlist, p_item,
+                               PLAYLIST_GO|PLAYLIST_APPEND, PLAYLIST_END );
++*/
++
++            playlist_AddItem( p_playlist, p_item,
++                              PLAYLIST_APPEND, PLAYLIST_END );
+         }
+     }
+     else if( !strcmp( psz_cmd, "playlist" ) )
+diff -u'rNF^function' vlc-0.8.2/modules/demux/livedotcom.cpp mmi-vlc-0.8.2/modules/demux/livedotcom.cpp
+--- vlc-0.8.2/modules/demux/livedotcom.cpp	2005-06-25 06:43:06.000000000 -0700
++++ mmi-vlc-0.8.2/modules/demux/livedotcom.cpp	2006-07-31 02:57:58.000000000 -0700
+@@ -265,6 +265,14 @@
+         psz_url = (char*)malloc( strlen( p_sys->psz_path ) + 8 );
+         sprintf( psz_url, "rtsp://%s", p_sys->psz_path );
+ 
++/* XXX UGLY HACK DONT LOOK */
++        msg_Warn( p_demux, "livedotcom.cpp: Ugly hack. Parsing out fields that we dont want. Was: %s", psz_url);
++        char *tmp_str = strchr( psz_url, (int)('&') );
++        if( tmp_str != NULL )
++            tmp_str[0] = 0;
++        msg_Warn( p_demux, "livedotcom.cpp: Ugly hack. psz_url now is %s", psz_url );
++/* XXX */
++
+         psz_options = p_sys->rtsp->sendOptionsCmd( psz_url );
+         if( psz_options )
+             delete [] psz_options;
+@@ -892,6 +900,38 @@
+             *pb = VLC_TRUE;
+             return VLC_SUCCESS;
+ 
++        case DEMUX_CAN_SUPPORT_TRICK:
++            pb = (vlc_bool_t*)va_arg( args, vlc_bool_t * );
++            *pb = VLC_TRUE;
++            return VLC_SUCCESS;
++        
++        case DEMUX_SET_SCALE:
++        {
++            double d_npt;
++            float f_scale;
++            MediaSubsessionIterator *iter;
++            MediaSubsession *sub;
++
++            d_npt = ( (double)( p_sys->i_pcr - p_sys->i_pcr_start +
++                                p_sys->i_start ) ) / 1000000.00;
++
++            f_scale = (float)va_arg( args, double );
++            if( p_sys->rtsp == NULL )
++                return VLC_EGENERIC;
++
++            iter = new MediaSubsessionIterator( *p_sys->ms );
++            while( ( sub = iter->next() ) != NULL )
++            {
++                    if ( !p_sys->rtsp->playMediaSubsession( *sub, 
++                           (d_npt > 0 ? d_npt : -1), -1, f_scale, false ) )
++                {
++                    delete iter;
++                    return VLC_EGENERIC;
++                }
++            }
++            delete iter;
++            return VLC_SUCCESS;            
++        }
+         case DEMUX_SET_PAUSE_STATE:
+             double d_npt;
+             MediaSubsessionIterator *iter;
+diff -u'rNF^function' vlc-0.8.2/modules/demux/ts.c mmi-vlc-0.8.2/modules/demux/ts.c
+--- vlc-0.8.2/modules/demux/ts.c	2005-06-25 06:43:06.000000000 -0700
++++ mmi-vlc-0.8.2/modules/demux/ts.c	2006-07-31 02:57:58.000000000 -0700
+@@ -33,6 +33,18 @@
+ #include "iso_lang.h"
+ #include "network.h"
+ 
++#ifdef HAVE_CAS
++#include <ca_crypto/crypto.h>
++#include <ca_dec/ca_dec.h>
++#define CA_SYS_ID  0x222
++#define EMM_PID    600
++static void ecmCallBack (void *token, ca_info_t *p_info);
++static void emmCallBack (void *token, ca_info_t *p_info);
++static void decryptPacket( ca_info_t *p_info, uint8_t *p_buffer, uint8_t *p_encrypted, int i_len, int mode );
++static int  openEMMLicenseFile(demux_t *p_demux, char *filename);
++static void setupCAS( demux_t *p_demux );
++#endif
++
+ #include "../mux/mpeg/csa.h"
+ 
+ /* Include dvbpsi headers */
+@@ -266,6 +278,19 @@
+ 
+ } ts_pid_t;
+ 
++/* AES key size 128 bits */
++#define AES_KEY_LENGTH 16 
++/* AES use block size 16bytes */
++#define AES_BLOCK_SIZE 16
++typedef struct 
++{
++    uint8_t  aes_mode;
++	uint8_t  key_len;
++    uint8_t  iv_len;
++	uint8_t  key[AES_KEY_LENGTH];
++    uint8_t  iv[AES_BLOCK_SIZE];
++} cas_emm_payload, *cas_emm_payload_p;
++
+ struct demux_sys_t
+ {
+     /* TS packet size (188, 192, 204) */
+@@ -296,6 +321,16 @@
+ 
+     /* */
+     vlc_bool_t  b_meta;
++
++#ifdef HAVE_CAS
++    /* CA support */
++    cas_sys_p   p_ecm_sys;
++    cas_sys_p   p_emm_sys;
++    char *      priv_key_fname;
++    cas_emm_payload emm;
++    vlc_bool_t  b_have_license_key;
++#endif
++
+ };
+ 
+ static int Demux  ( demux_t *p_demux );
+@@ -615,6 +650,12 @@
+     var_Get( p_demux, "ts-silent", &val );
+     p_sys->b_silent = val.b_bool;
+ 
++#ifdef HAVE_CAS
++    p_sys->p_ecm_sys = NULL;
++    p_sys->p_emm_sys = NULL;
++    setupCAS(p_demux);
++#endif
++
+     return VLC_SUCCESS;
+ }
+ 
+@@ -691,7 +732,13 @@
+         var_Change( p_demux, "programs", VLC_VAR_FREELIST, &val, NULL );
+     }
+ 
++#ifdef HAVE_CAS
++    casDelete(p_sys->p_ecm_sys);
++    casDelete(p_sys->p_emm_sys);
++#endif
++
+     free( p_sys );
++    
+ }
+ 
+ /*****************************************************************************
+@@ -770,8 +817,47 @@
+         /* Parse the TS packet */
+         p_pid = &p_sys->pid[PIDGet( p_pkt )];
+ 
++#ifdef HAVE_CAS
++        /* parse ECM/EMM if it is */
++        if (p_sys->p_ecm_sys != NULL)
++        {
++            casParseTS( p_sys->p_ecm_sys, p_pkt->p_buffer, p_sys->i_packet_size );
++        }
++#endif 
++
+         if( p_pid->b_valid )
+         {
++#ifdef HAVE_CAS
++            const uint8_t    *p = p_pkt->p_buffer;
++            /* transport scrambling control */
++            
++            if( ( p[3] & 0xc0 ) != 0 && p_sys->p_ecm_sys )
++            {
++                ca_info_t p_info;
++                const vlc_bool_t b_adaptation = p[3]&0x20;
++                int i_skip = 0;
++                if( !b_adaptation )
++                {
++                    /* We don't have any adaptation_field, so payload starts
++                     * immediately after the 4 byte TS header */
++                    i_skip = 4;
++                }
++                else
++                {
++                     /* p[4] is adaptation_field_length minus one */
++                    i_skip = 5 + p[4];
++                }
++                /* scrambled */
++                casGetPIDKey( p_sys->p_ecm_sys, p_pid->i_owner_number, p_pid->i_pid, &p_info );
++                if ( p_info.b_have_key )
++                {
++                    uint8_t *payload = p_pkt->p_buffer + i_skip;
++                    decryptPacket( &p_info, p_pkt->p_buffer, payload, 
++                                   p_sys->i_packet_size - i_skip, p_sys->emm.aes_mode );
++                }
++            }
++#endif
++
+             if( p_pid->psi )
+             {
+                 if( p_pid->i_pid == 0 || p_pid->i_pid == 0x11 || p_pid->i_pid == 0x12 )
+@@ -1490,6 +1576,15 @@
+             i_ret = VLC_TRUE;
+         }
+ 
++        /* PES  level scrampling */
++        if (( p_bk->p_buffer[6] & 0x30 ) != 0 )
++        {
++            if (( p[3] & 0xc0 ) != 0 )
++            {
++                msg_Warn( p_demux, " * Packets may be scrambled at both TS and PES level! " );
++            }
++            
++        }
+         block_ChainLastAppend( &pid->es->pp_last, p_bk );
+         if( p_bk->i_buffer > 6 )
+         {
+@@ -2396,7 +2491,16 @@
+         {
+             uint16_t i_sysid = ((uint16_t)p_dr->p_data[0] << 8)
+                                 | p_dr->p_data[1];
++            dvbpsi_ca_dr_t *p_decoded = dvbpsi_DecodeCADr( p_dr );
+             msg_Dbg( p_demux, " * descriptor : CA (0x9) SysID 0x%x", i_sysid );
++#ifdef HAVE_CAS
++            if ( p_decoded && p_sys->p_ecm_sys )
++            {
++                casAddCADescriptor2PRO(p_sys->p_ecm_sys, p_pmt->i_program_number,
++                	p_decoded->i_ca_system_id, p_decoded->i_ca_pid,
++                	p_decoded->i_private_data, p_decoded->i_private_length);
++            }
++#endif            	
+         }
+         else
+         {
+@@ -2444,6 +2548,9 @@
+         pid->i_pid          = p_es->i_pid;
+         pid->b_seen         = p_sys->pid[p_es->i_pid].b_seen;
+ 
++#ifdef HAVE_CAS
++        casSetProgramNum(p_sys->p_ecm_sys, p_es->i_pid, p_pmt->i_program_number);
++#endif
+         if( p_es->i_type == 0x10 || p_es->i_type == 0x11 ||
+             p_es->i_type == 0x12 )
+         {
+@@ -2823,8 +2930,19 @@
+             {
+                 uint16_t i_sysid = ((uint16_t)p_dr->p_data[0] << 8)
+                                     | p_dr->p_data[1];
++                dvbpsi_ca_dr_t *p_decoded = dvbpsi_DecodeCADr( p_dr );
+                 msg_Dbg( p_demux, "   * descriptor : CA (0x9) SysID 0x%x",
+                          i_sysid );
++#ifdef HAVE_CAS
++	            if ( p_decoded && p_sys->p_ecm_sys )
++	            {
++	                casAddCADescriptor2PID(p_sys->p_ecm_sys, p_pmt->i_program_number,
++	                	p_es->i_pid,
++	                	p_decoded->i_ca_system_id, p_decoded->i_ca_pid,
++	                	p_decoded->i_private_data, p_decoded->i_private_length);
++	                casSetProgramNum(p_sys->p_ecm_sys, p_decoded->i_ca_pid, p_pmt->i_program_number);
++	            }
++#endif                
+             }
+         }
+ 
+@@ -2836,6 +2954,14 @@
+                             VLC_TRUE );
+         }
+     }
++    
++    /*  */
++#ifdef HAVE_CAS
++    if ( p_sys->p_ecm_sys )
++    {
++    	casSetProgramNum(p_sys->p_ecm_sys, p_pmt->i_pcr_pid, p_pmt->i_program_number);
++    }
++#endif
+ 
+     if( DVBProgramIsSelected( p_demux, prg->i_number ) )
+     {
+@@ -3042,3 +3168,243 @@
+     dvbpsi_DeletePAT( p_pat );
+ }
+ 
++#ifdef HAVE_CAS
++static void  ecmCallBack ( void *token, ca_info_t *p_info )
++{
++    demux_t     *p_demux = (demux_t *)token;
++    demux_sys_t *p_sys   = p_demux->p_sys;
++
++    uint8_t *key         = p_sys->emm.key;
++    uint8_t *iv          = p_sys->emm.iv;
++    AES_MODE mode        = (AES_MODE)p_sys->emm.aes_mode;
++    int key_len          = p_sys->emm.key_len;
++    int iv_len           = p_sys->emm.iv_len;
++
++    if (p_sys->b_have_license_key == VLC_FALSE)
++    {
++        msg_Warn( p_demux, "No liense key to decrypt the ECM !" );
++    }
++    else if (p_info->p_CA_section_data && p_info->i_CA_section_length > 0)
++    {
++        /* decode ECM using access key in EMM */
++        /* put the decoded data back to p_info->p_CA_section_data);*/ 
++        decryptBufferData( p_info->p_CA_section_data, p_info->i_CA_section_length,
++		p_info->p_CA_section_data, p_info->i_CA_section_length,
++		key, key_len, iv, iv_len, mode ) ;
++    }
++
++    return;
++
++}
++
++static void emmCallBack ( void *token, ca_info_t *p_info )
++{
++    demux_t     *p_demux = (demux_t *)token;
++    demux_sys_t *p_sys   = p_demux->p_sys;
++    FILE * fp = NULL;
++    uint8_t * temp_buf, *p_emm_payload;
++    int out_len;
++    
++    /* Decrypt EMM first */
++    if( p_sys->priv_key_fname )
++    {
++        msg_Dbg(p_demux, "priv_key_fname [ %s ] not NULL. Decrypting EMM.",p_sys->priv_key_fname );
++        fp = fopen(p_sys->priv_key_fname, "rb+");
++        if ( fp == NULL ) {
++            msg_Err(p_demux, "Cannot open private key to decrypt emm file");
++            return; 
++        }
++
++        temp_buf = (uint8_t *)malloc(p_info->i_CA_section_length);
++        if (temp_buf == NULL) {
++            msg_Err(p_demux, "malloc error");
++            return;
++        }
++        out_len = asym_decrypt(fp, p_info->p_CA_section_data, p_info->i_CA_section_length, temp_buf);
++        if ( out_len == 0 ) {
++            msg_Err(p_demux, "EMM decrypt error");
++            return;
++        }
++        /* copy it into the p_CA_section_data */
++        memcpy(p_info->p_CA_section_data, temp_buf, out_len);
++        p_info->i_CA_section_length = out_len;
++
++        msg_Dbg(p_demux, "EMM decryption done: EMM plaintext size %d", out_len);
++
++        free( temp_buf );
++    }
++
++    p_emm_payload = (uint8_t *)p_info->p_CA_section_data;
++    p_sys->emm.aes_mode    = (AES_MODE)p_emm_payload[0];
++    p_sys->emm.key_len     = p_emm_payload[1];
++    p_sys->emm.iv_len      = p_emm_payload[2];
++    
++    memcpy( p_sys->emm.key, p_emm_payload + sizeof(uint8_t)*3, p_sys->emm.key_len );
++
++    memcpy( p_sys->emm.iv, p_emm_payload + sizeof(uint8_t)*3 + p_sys->emm.key_len,
++    	     p_sys->emm.iv_len );
++
++    p_sys->b_have_license_key = VLC_TRUE;
++    return;
++}
++
++static int openEMMLicenseFile( demux_t *p_demux, char *filename )
++{
++    demux_sys_t    *p_sys = p_demux->p_sys;
++	uint8_t *p_buffer = (uint8_t *)malloc(p_sys->i_packet_size);
++
++    if ( NULL == p_buffer )
++    {
++    	return -1;
++    }
++    else
++    {
++	    FILE *emmFile = NULL;
++	    emmFile = fopen(filename, "rb");
++	    if ( emmFile != NULL )
++	    {
++            msg_Dbg( p_demux, "Opening license file : %s", filename );
++		    while( fread(p_buffer, 1, p_sys->i_packet_size, emmFile) == p_sys->i_packet_size )
++		    {
++		        casParseTS( p_sys->p_emm_sys, p_buffer, p_sys->i_packet_size );
++		    }
++		    fclose(emmFile);
++		    free(p_buffer);
++		    return 0;
++	    }
++	    else
++	    {
++            msg_Warn( p_demux, "Cannot open license file : %s", filename );
++	    	return -1;
++	    }
++    }
++}
++
++static void counterAddUInt32( uint8_t *op1, uint32_t op_size, uint32_t op2)
++{
++    uint32_t len;
++    uint8_t  op2_8; 
++    
++    len = op_size - 1;
++    op2_8 = op2 & 0xFF;
++    while ( len >= 0 )
++    {
++        op1[len] = op1[len] + op2_8;
++    	if ( op1[len] )
++    		break;
++    	len--;
++    }
++
++    len = op_size - 2;
++    op2_8 = (op2 >> 8 )& 0xFF;
++    while ( len >= 0 )
++    {
++        op1[len] = op1[len] + op2_8;
++    	if ( op1[len] )
++    		break;
++    	len--;
++    }
++
++    len = op_size - 3;
++    op2_8 = (op2 >> 16 ) & 0xFF;
++    while ( len >= 0 )
++    {
++        op1[len] = op1[len] + op2_8;
++    	if ( op1[len] )
++    		break;
++    	len--;
++    }
++
++    len = op_size - 4;
++    op2_8 = (op2 >> 24 ) & 0xFF;
++    while ( len >= 0 )
++    {
++        op1[len] = op1[len] + op2_8;
++    	if ( op1[len] )
++    		break;
++    	len--;
++    }
++    
++    return;  	
++}
++
++static void counterInc( uint8_t *op1, uint32_t op_size)
++{
++    uint32_t len;
++    
++    len = op_size - 1;
++    while ( len >= 0 )
++    {
++    	if ( ++op1[len] )
++    		break;
++    	len--;
++    }
++   
++    return;  	
++}
++
++static void decryptPacket( ca_info_t *p_info, uint8_t *p_buffer, uint8_t *p_encrypted, int i_len, int mode )
++{
++    uint8_t  *data = (uint8_t *)p_info->p_CA_section_data;
++    uint8_t  key_len  = data[0];
++    uint8_t  iv_len  = data[1];
++    uint8_t  *key    = data + 2;
++    uint8_t  *iv     = data + 2 + key_len;
++    static uint16_t pre_continuity_counter = 0;    
++    uint16_t continuity_counter = p_buffer[3] & 0x0f;
++
++    uint8_t *counter = (uint8_t *)malloc(iv_len);
++    memcpy(counter, iv, iv_len);
++    
++    counterAddUInt32( counter, iv_len, continuity_counter * 12 ); /* 184*8/128 */
++    if ( continuity_counter != pre_continuity_counter + 1 )
++    {
++       /* recompute the counter	 */
++    }
++    else
++    {
++    	/*counter ++; */
++    	
++    }
++    
++    if ( i_len > 0)
++    {
++        decryptBufferData( p_encrypted, i_len, p_encrypted, i_len,
++			   key, key_len, counter, iv_len, mode );
++    }
++
++    pre_continuity_counter = continuity_counter;
++    free(counter);
++    return;
++}
++
++static void setupCAS( demux_t *p_demux )
++{
++    demux_sys_t   *p_sys = p_demux->p_sys;
++    char        *lic_name = NULL;
++    char        *priv_key_fname = NULL;
++
++    p_sys->p_ecm_sys = casOpen( CA_SYS_ID );
++    casSetEMSCallBack(p_sys->p_ecm_sys, ecmCallBack, p_demux);
++
++    p_sys->p_emm_sys = casOpen( CA_SYS_ID );
++    casSetEMSCallBack( p_sys->p_emm_sys, emmCallBack, p_demux );
++    casAddEMMCADescriptor( p_sys->p_emm_sys, CA_SYS_ID, EMM_PID, NULL, 0 );
++
++    priv_key_fname = GetConfigurationValue( CONFIG_FILE_NAME, "PrivateKeyFile" );
++    if ( priv_key_fname )
++    {
++        p_sys->priv_key_fname = priv_key_fname;        
++    }
++    
++    lic_name = GetConfigurationValue( CONFIG_FILE_NAME, "LicenseName" );
++    if ( lic_name )
++    {
++    	openEMMLicenseFile( p_demux, lic_name );
++    	free(lic_name);
++    }
++    
++    return;
++}
++#endif
++
+diff -u'rNF^function' vlc-0.8.2/modules/gui/wxwindows/bitmaps/ccopy.xpm mmi-vlc-0.8.2/modules/gui/wxwindows/bitmaps/ccopy.xpm
+--- vlc-0.8.2/modules/gui/wxwindows/bitmaps/ccopy.xpm	1969-12-31 16:00:00.000000000 -0800
++++ mmi-vlc-0.8.2/modules/gui/wxwindows/bitmaps/ccopy.xpm	2006-07-31 02:57:58.000000000 -0700
+@@ -0,0 +1,41 @@
++/* XPM */
++static char *ccopy_xpm[] = {
++/* width height num_colors chars_per_pixel */
++"    32    32        2            1",
++/* colors */
++". c None",
++"# c #000000",
++/* pixels */
++"................................",
++"........####....................",
++".......#........................",
++".......#.....##..###..#..#......",
++".......#....#..#.#..#.#..#......",
++".......#....#..#.#..#.#..#......",
++"........####.##..###...###......",
++".................#.......#......",
++"...###########...#.......#......",
++"...#.........#........###.......",
++"...#.#####.#.#..................",
++"...#.........#..................",
++"...#.###.###.#..................",
++"...#.........#..................",
++"...#.####..###..................",
++"...#......#..#..................",
++"...#...#.....#..................",
++"...#.#######.#.###########......",
++"...#.........#.#.........#......",
++"...###########.#.#####.#.#......",
++"...............#.........#......",
++".......#...#...#.###.###.#......",
++".......#....#..#.........#......",
++"........######.#.####..###......",
++"............#..#......#..#......",
++"...........#...#...#.....#......",
++"...............#.#######.#......",
++"...............#.........#......",
++"...............###########......",
++"................................",
++"................................",
++"................................"
++};
+diff -u'rNF^function' vlc-0.8.2/modules/gui/wxwindows/bitmaps/record.xpm mmi-vlc-0.8.2/modules/gui/wxwindows/bitmaps/record.xpm
+--- vlc-0.8.2/modules/gui/wxwindows/bitmaps/record.xpm	1969-12-31 16:00:00.000000000 -0800
++++ mmi-vlc-0.8.2/modules/gui/wxwindows/bitmaps/record.xpm	2006-07-31 02:57:58.000000000 -0700
+@@ -0,0 +1,21 @@
++/* XPM */
++static char * record_xpm[] = {
++"16 16 2 1",
++" 	c None",
++".	c #FF0000",
++"                ",
++"                ",
++"    .......     ",
++"   .........    ",
++"  ...........   ",
++"  ...........   ",
++"  ...........   ",
++"  ...........   ",
++"  ...........   ",
++"  ...........   ",
++"  ...........   ",
++"   .........    ",
++"    .......     ",
++"                ",
++"                ",
++"                "};
+diff -u'rNF^function' vlc-0.8.2/modules/gui/wxwindows/interface.cpp mmi-vlc-0.8.2/modules/gui/wxwindows/interface.cpp
+--- vlc-0.8.2/modules/gui/wxwindows/interface.cpp	2005-06-25 06:43:09.000000000 -0700
++++ mmi-vlc-0.8.2/modules/gui/wxwindows/interface.cpp	2006-07-31 02:57:58.000000000 -0700
+@@ -44,6 +44,8 @@
+ #include "bitmaps/playlist.xpm"
+ #include "bitmaps/speaker.xpm"
+ #include "bitmaps/speaker_mute.xpm"
++#include "bitmaps/record.xpm"
++#include "bitmaps/ccopy.xpm"
+ 
+ #define TOOLBAR_BMP_WIDTH 16
+ #define TOOLBAR_BMP_HEIGHT 16
+@@ -55,6 +57,10 @@
+ #include "../../../share/vlc16x16.xpm"
+ #endif
+ 
++#ifdef HAVE_RIGHTS_XFACE
++#include "rights_xface/rights_xface.h"
++#endif /* HAVE_RIGHTS_XFACE */
++
+ /*****************************************************************************
+  * Local class declarations.
+  *****************************************************************************/
+@@ -152,6 +158,11 @@
+     DiscPrev_Event,
+     DiscNext_Event,
+ 
++    /* DReaM specific events */
++    RecordStream_Event,
++    CCopyStream_Event,
++    /* Adapt_Event, */
++    
+     /* it is important for the id corresponding to the "About" command to have
+      * this standard value as otherwise it won't be handled properly under Mac
+      * (where it is special and put into the "Apple" menu) */
+@@ -198,6 +209,10 @@
+     EVT_MENU(NextStream_Event, Interface::OnNextStream)
+     EVT_MENU(SlowStream_Event, Interface::OnSlowStream)
+     EVT_MENU(FastStream_Event, Interface::OnFastStream)
++#ifdef HAVE_RIGHTS_XFACE
++    EVT_MENU(RecordStream_Event, Interface::OnRecordStream)
++    EVT_MENU(CCopyStream_Event, Interface::OnCCopyStream)
++#endif /* HAVE_RIGHTS_XFACE */
+ 
+     /* Disc Buttons events */
+     EVT_BUTTON(DiscMenu_Event, Interface::OnDiscMenu)
+@@ -219,7 +234,7 @@
+  * Constructor.
+  *****************************************************************************/
+ Interface::Interface( intf_thread_t *_p_intf, long style ):
+-    wxFrame( NULL, -1, wxT("VLC media player"),
++    wxFrame( NULL, -1, wxT("Project DReaM VLC media player"),
+              wxDefaultPosition, wxSize(700,100), style )
+ {
+     /* Initializations */
+@@ -278,11 +293,11 @@
+     /* Creation of the status bar
+      * Helptext for menu items and toolbar tools will automatically get
+      * displayed here. */
+-    int i_status_width[3] = {-6, -2, -9};
+-    statusbar = CreateStatusBar( 3 );                            /* 2 fields */
+-    statusbar->SetStatusWidths( 3, i_status_width );
++    int i_status_width[4] = {-6, -2, -6, -6};
++    statusbar = CreateStatusBar( 4 );                            /* 2 fields */
++    statusbar->SetStatusWidths( 4, i_status_width );
+     statusbar->SetStatusText( wxString::Format(wxT("x%.2f"), 1.0), 1 );
+-
++    
+     /* Video window */
+     video_window = 0;
+     if( config_GetInt( p_intf, "wxwin-embed" ) )
+@@ -483,8 +498,11 @@
+ #define HELP_PLO N_("Playlist")
+ #define HELP_PLP N_("Previous playlist item")
+ #define HELP_PLN N_("Next playlist item")
+-#define HELP_SLOW N_("Play slower")
+-#define HELP_FAST N_("Play faster")
++#define HELP_SLOW N_("Play slower/Fast Reverse")
++#define HELP_FAST N_("Play faster/Fast Forward")
++#define HELP_RECORD N_("Record")
++#define HELP_CLEAR_COPY N_("Clear Copy")
++#define HELP_ADAPT N_("Adapt Content")
+ 
+     int minimal = config_GetInt( p_intf, "wxwin-minimal" );
+ 
+@@ -501,6 +519,16 @@
+     toolbar->AddTool( OpenFile_Event, wxT(""),
+                       wxBitmap( eject_xpm ), wxU(_(HELP_OPEN)) );
+     toolbar->AddSeparator();
++#ifdef HAVE_RIGHTS_XFACE 
++    toolbar->AddTool( RecordStream_Event, wxT(""), 
++                      wxBitmap( record_xpm ), wxU(_(HELP_RECORD)) );
++
++    toolbar->AddTool( CCopyStream_Event, wxT(""), 
++                      wxBitmap( ccopy_xpm ), wxU(_(HELP_CLEAR_COPY)) );
++    /*toolbar->AddTool( Adapt_Event, wxT(""), 
++                      wxBitmap( adapt_xpm ), wxU(_(HELP_ADAPT)) );*/
++    toolbar->AddSeparator();
++#endif /* HAVE_RIGHTS_XFACE */
+     }
+ 
+     wxToolBarToolBase *p_tool = toolbar->AddTool( PlayStream_Event, wxT(""),
+@@ -1035,6 +1063,7 @@
+ void Interface::PlayStream()
+ {
+     wxCommandEvent dummy;
++
+     playlist_t *p_playlist =
+         (playlist_t *)vlc_object_find( p_intf, VLC_OBJECT_PLAYLIST,
+                                        FIND_ANYWHERE );
+@@ -1042,11 +1071,12 @@
+ 
+     if( p_playlist->i_size && p_playlist->i_enabled )
+     {
+-        vlc_value_t state;
++        vlc_value_t state, val;
+ 
+         input_thread_t *p_input = (input_thread_t *)vlc_object_find( p_intf,
+                                                        VLC_OBJECT_INPUT,
+                                                        FIND_ANYWHERE );
++
+         if( p_input == NULL )
+         {
+             /* No stream was playing, start one */
+@@ -1058,14 +1088,14 @@
+ 
+         var_Get( p_input, "state", &state );
+ 
+-        if( state.i_int != PAUSE_S )
++        if( state.i_int == PLAYING_S )
+         {
+             /* A stream is being played, pause it */
+             state.i_int = PAUSE_S;
+         }
+         else
+         {
+-            /* Stream is paused, resume it */
++            /* Stream is paused, or ffwded or rwnded, resume normal play */
+             state.i_int = PLAYING_S;
+         }
+         var_Set( p_input, "state", state );
+@@ -1082,6 +1112,71 @@
+     }
+ }
+ 
++#ifdef HAVE_RIGHTS_XFACE
++void Interface::SetButtonState( char *psz_name )
++{
++    bool ret = canDoFFWD( psz_name );
++    EnableFFWDButton( ret ); 
++
++    ret = canDoRWND( psz_name ); 
++    EnableRWNDButton( ret ); 
++
++    ret = canDoRecord( psz_name); 
++    EnableRecordButton( ret ); 
++        
++    ret = canDoCCopy( psz_name );
++    EnableCCopyButton( ret );
++   
++    ret = canDoPlay( psz_name);
++    EnablePlayButton( ret );
++}
++
++void Interface::EnableFFWDButton( bool enable ) {
++    GetToolBar()->EnableTool( FastStream_Event, enable );    
++}
++
++void Interface::EnableRWNDButton( bool enable ) {
++    GetToolBar()->EnableTool( SlowStream_Event, enable );    
++}
++
++void Interface::EnableRecordButton( bool enable ) {
++    GetToolBar()->EnableTool( RecordStream_Event, enable );    
++}
++
++void Interface::EnableCCopyButton( bool enable ) {
++    GetToolBar()->EnableTool( CCopyStream_Event, enable );    
++}
++
++void Interface::EnablePlayButton( bool enable ) {
++    GetToolBar()->EnableTool( PlayStream_Event, enable );
++}
++
++void Interface::OnCCopyStream( wxCommandEvent& WXUNUSED(event) )
++{
++    wxCommandEvent dummy;
++    if( !canDoCCopy( p_intf->p_sys->p_input->input.p_item->psz_name  ) ) {
++         wxMessageBox( wxU(_("Insufficient rights to clear copy") ), wxU(_("Can't Copy")),
++                      wxICON_WARNING | wxOK, this );
++    } else {
++        OnShowDialog( dummy );      
++        reportCCopy( p_intf->p_sys->p_input->input.p_item->psz_name );
++    }
++}
++
++void Interface::OnRecordStream( wxCommandEvent& WXUNUSED(event) )
++{
++    wxCommandEvent dummy;
++    if( !canDoRecord( p_intf->p_sys->p_input->input.p_item->psz_name  ) ) {
++         wxMessageBox( wxU(_("Insufficient rights to record") ), wxU(_("Can't record")),
++                      wxICON_WARNING | wxOK, this );
++    } else {
++        OnShowDialog( dummy );      
++        reportRecord( p_intf->p_sys->p_input->input.p_item->psz_name );
++    }
++
++}
++#endif /* HAVE_RIGHTS_XFACE */
++
+ void Interface::OnStopStream( wxCommandEvent& WXUNUSED(event) )
+ {
+     StopStream();
+@@ -1231,8 +1326,39 @@
+     if( p_input )
+     {
+         vlc_value_t val; val.b_bool = VLC_TRUE;
++        vlc_value_t state;
++
++        /* Get the can_support_trickplay variable to see if trickplay 
++            is supported.
++           If supported then a rewind will result in a state 
++           change rather than a rate change.
++        */
++        var_Get( p_input, "can-support-trick", &val );
++        
++        /* if trickplay is supported */
++        if( val.b_bool ) 
++       {
++            state.i_int = RWND_S;
++#ifdef HAVE_RIGHTS_XFACE 
++        if( canDoRWND( p_intf->p_sys->p_input->input.p_item->psz_name ) ) {
++            var_Set( p_input, "state", state );            
++            reportRWND( p_intf->p_sys->p_input->input.p_item->psz_name );
++            /* look ahead to see if any more rewind rights available */
++            if( !canDoRWND( p_intf->p_sys->p_input->input.p_item->psz_name ) ) {
++                EnableRWNDButton( VLC_FALSE );
++                msg_Dbg( p_intf, "No more rights for rewind");
++            }
++        } 
++#else 
++            var_Set( p_input, "state", state );            
++
++#endif /* HAVE_RIGHTS_XFACE */
++        }
++        else {
++            var_Set( p_input, "rate-slower", val );
++        }
+ 
+-        var_Set( p_input, "rate-slower", val );
++        
+         vlc_object_release( p_input );
+     }
+ }
+@@ -1244,9 +1370,41 @@
+                                            FIND_ANYWHERE );
+     if( p_input )
+     {
+-        vlc_value_t val; val.b_bool = VLC_TRUE;
++        vlc_value_t val; val.b_bool = VLC_FALSE;
++        vlc_value_t state;
+ 
+-        var_Set( p_input, "rate-faster", val );
++        /* Get the can_support_trickplay variable to see if trickplay 
++           is supported.
++           If supported then a fast forward will result in a state 
++           change rather than a rate change. (Trick functions are 
++           implemented internally as state changes.)
++        */        
++        var_Get( p_input, "can-support-trick", &val );
++        
++        /* if trickplay is supported */
++        if( val.b_bool ) 
++        {
++            state.i_int = FFWD_S;
++#ifdef HAVE_RIGHTS_XFACE
++        if( canDoFFWD( p_intf->p_sys->p_input->input.p_item->psz_name ) ) {
++            var_Set( p_input, "state", state );
++            reportFFWD( p_intf->p_sys->p_input->input.p_item->psz_name );
++            if( !canDoFFWD( p_intf->p_sys->p_input->input.p_item->psz_name ) ) {
++                EnableFFWDButton( VLC_FALSE );
++                msg_Dbg( p_intf, "No more rights for ffwd");
++            }
++        }
++#else
++            var_Set( p_input, "state", state );
++            
++#endif /* HAVE_RIGHTS_XFACE */
++        } 
++        else
++        {
++            var_Set( p_input, "rate-faster", val );
++        }
++     
++        
+         vlc_object_release( p_input );
+     }
+ }
+@@ -1258,6 +1416,8 @@
+ 
+     wxToolBarToolBase *p_tool = (wxToolBarToolBase *)
+         GetToolBar()->GetToolClientData( PlayStream_Event );
++    wxToolBarToolBase *p_trick_tool;
++            
+     if( !p_tool ) return;
+ 
+     if( i_playing_status == PLAYING_S )
+@@ -1272,7 +1432,7 @@
+         p_tool->SetLabel( wxU(_("Play")) );
+         p_tool->SetShortHelp( wxU(_(HELP_PLAY)) );
+     }
+-
++    
+     GetToolBar()->Realize();
+     GetToolBar()->ToggleTool( PlayStream_Event, true );
+     GetToolBar()->ToggleTool( PlayStream_Event, false );
+diff -u'rNF^function' vlc-0.8.2/modules/gui/wxwindows/iteminfo.cpp mmi-vlc-0.8.2/modules/gui/wxwindows/iteminfo.cpp
+--- vlc-0.8.2/modules/gui/wxwindows/iteminfo.cpp	2005-06-25 06:43:09.000000000 -0700
++++ mmi-vlc-0.8.2/modules/gui/wxwindows/iteminfo.cpp	2006-07-31 02:57:58.000000000 -0700
+@@ -38,6 +38,10 @@
+ 
+ #include "wxwindows.h"
+ 
++#ifdef HAVE_RIGHTS_XFACE
++#include "rights_xface/rights_xface.h"
++#endif /* HAVE_RIGHTS_XFACE */
++
+ #ifndef wxRB_SINGLE
+ #   define wxRB_SINGLE 0
+ #endif
+@@ -181,6 +185,54 @@
+        info_root = info_tree->AddRoot( wxU( p_item->input.psz_name) );
+     }
+ 
++#ifdef HAVE_RIGHTS_XFACE
++    /* if rights protected then create a rights info tree */
++    if( isProtected( p_item->input.psz_uri ) ) {
++        wxTreeItemId cat = info_tree->AppendItem( info_root,
++                                wxU( "Rights") );
++        if( canDoPlay( p_item->input.psz_uri ) ) {
++            info_tree->AppendItem( cat , (wxString)wxU("Play :") +
++                                          wxT(" Allowed"));
++        } else {
++            info_tree->AppendItem( cat , (wxString)wxU("Play :") +
++                                          wxT(" Not Allowed"));
++        }
++
++        if( canDoFFWD( p_item->input.psz_uri ) ) {
++            info_tree->AppendItem( cat , (wxString)wxU("FastForward :") +
++                                          wxT(" Allowed"));
++        } else {
++            info_tree->AppendItem( cat , (wxString)wxU("FastForward :") +
++                                          wxT(" Not Allowed"));
++        }
++
++        if( canDoRWND( p_item->input.psz_uri ) ) {
++            info_tree->AppendItem( cat , (wxString)wxU("Rewind :") +
++                                          wxT(" Allowed"));
++        } else {
++            info_tree->AppendItem( cat , (wxString)wxU("Rewind :") +
++                                          wxT(" Not Allowed"));
++        }
++
++        if( canDoRecord( p_item->input.psz_uri ) ) {
++            info_tree->AppendItem( cat , (wxString)wxU("Record :") +
++                                          wxT(" Allowed"));
++        } else {
++            info_tree->AppendItem( cat , (wxString)wxU("Record :") +
++                                          wxT(" Not Allowed"));
++        }
++
++        if( canDoCCopy( p_item->input.psz_uri ) ) {
++            info_tree->AppendItem( cat , (wxString)wxU("Clear Copy :") +
++                                          wxT(" Allowed"));
++        } else {
++            info_tree->AppendItem( cat , (wxString)wxU("Clear Copy :") +
++                                          wxT(" Not Allowed"));
++        }
++
++        info_tree->Expand( cat );
++    }
++#endif /* HAVE_RIGHTS_XFACE */
+     /* Rebuild the tree */
+     for( int i = 0; i< p_item->input.i_categories ; i++)
+     {
+diff -u'rNF^function' vlc-0.8.2/modules/gui/wxwindows/playlist.cpp mmi-vlc-0.8.2/modules/gui/wxwindows/playlist.cpp
+--- vlc-0.8.2/modules/gui/wxwindows/playlist.cpp	2005-06-25 06:43:09.000000000 -0700
++++ mmi-vlc-0.8.2/modules/gui/wxwindows/playlist.cpp	2006-07-31 02:57:58.000000000 -0700
+@@ -48,6 +48,10 @@
+ #include <wx/dynarray.h>
+ #include <wx/imaglist.h>
+ 
++#ifdef HAVE_RIGHTS_XFACE
++#include "rights_xface/rights_xface.h"
++#endif /* HAVE_RIGHTS_XFACE */
++
+ #define HELP_SHUFFLE N_( "Shuffle" )
+ #define HELP_LOOP N_( "Repeat All" )
+ #define HELP_REPEAT N_( "Repeat One" )
+@@ -64,6 +68,12 @@
+                       vlc_value_t oval, vlc_value_t nval, void *param );
+ static int ItemDeleted( vlc_object_t *p_this, const char *psz_variable,
+                       vlc_value_t oval, vlc_value_t nval, void *param );
++#ifdef HAVE_RIGHTS_XFACE
++static int RightsBlock( vlc_object_t *, const char *,
++                        vlc_value_t, vlc_value_t, void * );
++static int ShowRightsInfo( vlc_object_t *, const char *,
++                        vlc_value_t, vlc_value_t, void * );
++#endif /* HAVE_RIGHTS_XFACE */
+ 
+ /*****************************************************************************
+  * Event Table.
+@@ -101,13 +111,16 @@
+ 
+     /* controls */
+     TreeCtrl_Event,
+-
+     Browse_Event,  /* For export playlist */
+ 
+     /* custom events */
+     UpdateItem_Event,
+     AppendItem_Event,
+     RemoveItem_Event,
++#ifdef HAVE_RIGHTS_XFACE
++    BlockRights_Event,
++    ShowRightsInfo_Event,
++#endif /* HAVE_RIGHTS_XFACE */
+ 
+     MenuDummy_Event = wxID_HIGHEST + 999,
+ 
+@@ -154,6 +167,9 @@
+     EVT_MENU( PopupInfo_Event, Playlist::OnPopupInfo)
+ 
+     /* Tree control events */
++#ifdef HAVE_RIGHTS_XFACE
++    EVT_TREE_SEL_CHANGED( wxID_ANY, Playlist::OnSelChangeItem )
++#endif /* HAVE_RIGHTS_XFACE */    
+     EVT_TREE_ITEM_ACTIVATED( TreeCtrl_Event, Playlist::OnActivateItem )
+     EVT_TREE_KEY_DOWN( -1, Playlist::OnKeyDown )
+ 
+@@ -280,7 +296,15 @@
+     item_popup->Append( PopupInfo_Event, wxU(_("Info")) );
+ 
+     /* Create a panel to put everything in */
++#ifdef HAVE_RIGHTS_XFACE
++    wxSplitterWindow *split_panels = new wxSplitterWindow( this, -1, wxPoint( 0, 0 ), 
++                                                            wxSize(400, 400) );
++    wxPanel *playlist_panel = new wxPanel( split_panels, -1 );
++    split_panels->SetAutoLayout( TRUE );
++#else
+     wxPanel *playlist_panel = new wxPanel( this, -1 );
++#endif /* HAVE_RIGHTS_XFACE */  
++
+     playlist_panel->SetAutoLayout( TRUE );
+ 
+     /* Create the toolbar */
+@@ -325,6 +349,15 @@
+     search_button->SetDefault();
+     toolbar->Realize();
+ 
++#ifdef HAVE_RIGHTS_XFACE
++    treectrl = new wxTreeCtrl( split_panels, TreeCtrl_Event,
++                               wxDefaultPosition, wxDefaultSize,
++                               wxTR_HIDE_ROOT | wxTR_LINES_AT_ROOT|
++                               wxTR_NO_LINES |
++                               wxTR_HAS_BUTTONS | wxTR_TWIST_BUTTONS |
++                               wxTR_MULTIPLE | wxTR_EXTENDED );
++
++#else
+     /* Create the tree */
+     treectrl = new wxTreeCtrl( playlist_panel, TreeCtrl_Event,
+                                wxDefaultPosition, wxDefaultSize,
+@@ -332,6 +365,7 @@
+                                wxTR_NO_LINES |
+                                wxTR_HAS_BUTTONS | wxTR_TWIST_BUTTONS |
+                                wxTR_MULTIPLE | wxTR_EXTENDED );
++#endif /* HAVE_RIGHTS_XFACE */
+ 
+     /* Create image list */
+     wxImageList *p_images = new wxImageList( 16 , 16, TRUE );
+@@ -356,6 +390,20 @@
+     font.SetPointSize(9);
+     treectrl->SetFont( font );
+ 
++#ifdef HAVE_RIGHTS_XFACE
++    info_area = new wxTextCtrl( split_panels, -1, wxT(""),  
++                                 wxDefaultPosition, wxSize(200, -1),
++                                  wxTE_MULTILINE | wxTE_READONLY |
++                                    wxTE_RICH | wxTE_NOHIDESEL);
++
++    info_attr = new wxTextAttr( wxColour::wxColour( 0, 128, 0 ) );
++    err_attr = new wxTextAttr( *wxRED );
++    warn_attr = new wxTextAttr( *wxBLUE );
++    dbg_attr = new wxTextAttr( *wxBLACK );
++
++    split_panels->SplitHorizontally( treectrl, info_area );
++#endif /* HAVE_RIGHTS_XFACE */
++
+     wxBoxSizer *panel_sizer = new wxBoxSizer( wxVERTICAL );
+     panel_sizer->Add( treectrl, 1, wxEXPAND | wxALL, 5 );
+     panel_sizer->Layout();
+@@ -373,7 +421,6 @@
+ 
+     i_saved_id = -1;
+ 
+-
+     /* We want to be noticed of playlist changes */
+ 
+     /* Some global changes happened -> Rebuild all */
+@@ -388,6 +435,11 @@
+     var_AddCallback( p_playlist, "item-append", ItemAppended, this );
+     var_AddCallback( p_playlist, "item-deleted", ItemDeleted, this );
+ 
++#ifdef HAVE_RIGHTS_XFACE
++    var_AddCallback( p_playlist, "rights-block", RightsBlock, this );
++    var_AddCallback( p_playlist, "show-rights-info", ShowRightsInfo, this );
++#endif /* HAVE_RIGHTS_XFACE */
++
+     /* Update the playlist */
+     Rebuild( VLC_TRUE );
+ 
+@@ -408,6 +460,12 @@
+     var_DelCallback( p_playlist, "intf-change", PlaylistChanged, this );
+     var_DelCallback( p_playlist, "item-append", ItemAppended, this );
+     var_DelCallback( p_playlist, "item-deleted", ItemDeleted, this );
++
++#ifdef HAVE_RIGHTS_XFACE
++    var_DelCallback( p_playlist, "rights-block", RightsBlock, this );
++    var_DelCallback( p_playlist, "show-rights-info", ShowRightsInfo, this );
++#endif /* HAVE_RIGHTS_XFACE */
++    
+     vlc_object_release( p_playlist );
+ }
+ 
+@@ -617,6 +675,16 @@
+     }
+ }
+ 
++#ifdef HAVE_RIGHTS_XFACE
++void Playlist::BlockRights( int i )
++{
++    msg_Dbg( p_intf, "Trying to block rights in wxwindows");
++   
++    wxMessageBox( wxU(_("Insufficient rights to Play") ), wxU(_("Rights Error!")),
++                          wxICON_WARNING | wxOK, this );
++    
++}
++#endif /* HAVE_RIGHTS_XFACE */
+ 
+ /**********************************************************************
+  * Search functions (internal)
+@@ -763,6 +831,11 @@
+         var_DelCallback( p_playlist, "item-append", ItemAppended, this );
+         var_DelCallback( p_playlist, "item-deleted", ItemDeleted, this );
+ 
++#ifdef HAVE_RIGHTS_XFACE
++    var_DelCallback( p_playlist, "rights-block", RightsBlock, this );
++    var_DelCallback( p_playlist, "show-rights-info", ShowRightsInfo, this );
++#endif /* HAVE_RIGHTS_XFACE */
++
+         /* ...and rebuild it */
+         LockPlaylist( p_intf->p_sys, p_playlist );
+     }
+@@ -809,6 +882,11 @@
+         var_AddCallback( p_playlist, "item-append", ItemAppended, this );
+         var_AddCallback( p_playlist, "item-deleted", ItemDeleted, this );
+ 
++#ifdef HAVE_RIGHTS_XFACE
++    var_AddCallback( p_playlist, "rights-block", RightsBlock, this );
++    var_AddCallback( p_playlist, "show-rights-info", ShowRightsInfo, this );
++#endif /* HAVE_RIGHTS_XFACE */
++
+         UnlockPlaylist( p_intf->p_sys, p_playlist );
+     }
+ }
+@@ -1070,6 +1148,40 @@
+ /********************************************************************
+  * Event
+  ********************************************************************/
++#ifdef HAVE_RIGHTS_XFACE
++
++void Playlist::OnSelChangeItem( wxTreeEvent& event )
++{
++    msg_Dbg(p_intf, "Sel Change happened");
++   
++    wxTreeItemId item = event.GetItem();
++   
++    if( item ) { 
++        playlist_item_t *p_item = NULL;
++        PlaylistItem *p_wxitem = treectrl->GetItemData( item );
++        if( p_wxitem )
++            p_item = playlist_ItemGetById( p_playlist, p_wxitem->i_id );
++        else
++            msg_Dbg( p_intf, "wxitem is null" );
++        if( p_item ) {
++            msg_Dbg( p_intf, "input.pszname is %s", p_item->input.psz_name);
++            if( p_item->input.psz_name != NULL ) {
++                char * str = GetRightsStatusStr( p_item->input.psz_name );
++                UpdateInfoArea( str );
++                free(str);
++            } else {
++                msg_Dbg( p_intf, "pszname is null" );
++            }
++        } else
++            msg_Dbg( p_intf, "p_item is null" );
++
++    } else {
++        msg_Dbg( p_intf, "item is null" );
++    }
++}
++
++#endif /* HAVE_RIGHTS_XFACE */
++
+ void Playlist::OnActivateItem( wxTreeEvent& event )
+ {
+     playlist_item_t *p_item,*p_node,*p_item2,*p_node2;
+@@ -1105,6 +1217,33 @@
+         }
+     }
+ 
++#ifdef HAVE_RIGHTS_XFACE
++
++    msg_Dbg(p_intf, "OnActivateItem called %s: ",
++                                                   p_item->input.psz_name );
++    /* if no play rights then unlock playlist and return */
++    if( (p_item != NULL) && (p_item->input.psz_name != NULL) ) {
++
++
++        msg_Dbg(p_intf, "Input pszname is %s: insufficient rights",
++                                                   p_item->input.psz_name );
++
++        if( !canDoPlay( p_item->input.psz_name ) ) {
++            UnlockPlaylist( p_intf->p_sys, p_playlist );
++            msg_Dbg(p_intf, "Cannot play %s: insufficient rights",
++                                                   p_item->input.psz_name );
++             wxMessageBox( wxU(_("Insufficient rights to Play") ), wxU(_("Rights Error!")),
++                          wxICON_WARNING | wxOK, this );
++             return;
++        } 
++        /* commenting this since NextItem in Playlist.c calls prepareForPlay
++         else {
++            prepareForPlay( p_item->input.psz_name );
++            msg_Dbg(p_intf, "Prepared for play from Playlist:OnActivateItem");
++        } */
++    }
++#endif /* HAVE_RIGHTS_XFACE */
++
+     playlist_Control( p_playlist, PLAYLIST_VIEWPLAY, i_current_view,
+                       p_node, p_item );
+     UnlockPlaylist( p_intf->p_sys, p_playlist );
+@@ -1384,6 +1523,18 @@
+ 
+ void Playlist::OnPopupDel( wxCommandEvent& event )
+ {
++#ifdef HAVE_RIGHTS_XFACE
++    LockPlaylist( p_intf->p_sys, p_playlist );
++    playlist_item_t *p_popup_item = playlist_ItemGetById( p_playlist, i_popup_item );
++    if( p_popup_item )
++    {
++        msg_Dbg( p_intf, "Removing the rights from cache for %s",
++        p_popup_item->input.psz_name );
++        releaseRights( p_popup_item->input.psz_name );
++    }
++    UnlockPlaylist( p_intf->p_sys, p_playlist );
++#endif /* HAVE_RIGHTS_XFACE */
++
+     DeleteTreeItem( i_wx_popup_item );
+ }
+ 
+@@ -1425,7 +1576,53 @@
+     UnlockPlaylist( p_intf->p_sys, p_playlist );
+ }
+ 
++#ifdef HAVE_RIGHTS_XFACE
++/**
++ * dont forget to free string after it has been used. 
++ */
++char* Playlist::GetRightsStatusStr( const char * psz_name )
++{
++    char *ret = (char *)malloc( 1024 );
++    ret[0] = 0;
++    strcat( ret, "Rights Summary\n" );
++    if( !isProtected( psz_name ) ){
++        strcat( ret, "  Rights Unknown" );            
++    } else {
++        if( canDoPlay( psz_name ) )
++            strcat( ret, "  Play:              Allowed\n" );
++        else
++            strcat( ret, "  Play:              Not Allowed\n" );
++
++        if( canDoFFWD( psz_name ) )
++            strcat( ret, "  FastForward:  Allowed\n" );
++        else
++            strcat( ret, "  FastForward:  Not Allowed\n" );
++
++        if( canDoRWND( psz_name ) )
++            strcat( ret, "  Rewind:          Allowed\n" );
++        else
++            strcat( ret, "  Rewind:          Not Allowed\n" );
++
++        if( canDoRecord( psz_name ) )
++            strcat( ret, "  Record:          Allowed\n" );
++        else
++            strcat( ret, "  Record:          Not Allowed\n" );
++
++        if( canDoCCopy( psz_name ) )
++            strcat( ret, "  ClearCopy:     Allowed\n" );
++        else
++            strcat( ret, "  ClearCopy:     Not Allowed\n" );
++    }
++    
++    return ret;
++}
+ 
++void Playlist::UpdateInfoArea( const char * psz_info )
++{
++    info_area->Clear();
++    (*info_area) << wxL2U( psz_info );                
++}
++#endif /* HAVE_RIGHTS_XFACE */
+ /*****************************************************************************
+  * Custom events management
+  *****************************************************************************/
+@@ -1442,6 +1639,14 @@
+         case RemoveItem_Event:
+             RemoveItem( event.GetInt() );
+             break;
++#ifdef HAVE_RIGHTS_XFACE            
++        case BlockRights_Event:
++            BlockRights( event.GetInt() );
++            break;
++        case ShowRightsInfo_Event:
++            UpdateInfoArea( (char*)event.GetClientData() );
++            break;
++#endif /* HAVE_RIGHTS_XFACE */
+     }
+ }
+ 
+@@ -1478,6 +1683,32 @@
+ /*****************************************************************************
+  * ItemChanged: callback triggered by the item-change playlist variable
+  *****************************************************************************/
++#ifdef HAVE_RIGHTS_XFACE
++static int RightsBlock( vlc_object_t *p_this, const char *psz_variable,
++                        vlc_value_t old_val, vlc_value_t new_val, void *param )
++{
++    Playlist *p_playlist_dialog = (Playlist *)param;
++
++    if( new_val.b_bool == VLC_TRUE ) {
++        wxCommandEvent event( wxEVT_PLAYLIST, BlockRights_Event );
++        p_playlist_dialog->AddPendingEvent( event );
++    }
++    return 0;
++
++
++}
++
++static int ShowRightsInfo( vlc_object_t *p_this, const char *psz_variable,
++                        vlc_value_t old_val, vlc_value_t new_val, void *param )
++{
++    Playlist *p_playlist_dialog = (Playlist *)param;
++    wxCommandEvent event( wxEVT_PLAYLIST, ShowRightsInfo_Event );
++    event.SetClientData( (void *)new_val.psz_string );
++    p_playlist_dialog->AddPendingEvent( event );
++    return 0;
++}
++#endif /* HAVE_RIGHTS_XFACE */
++
+ static int ItemChanged( vlc_object_t *p_this, const char *psz_variable,
+                         vlc_value_t old_val, vlc_value_t new_val, void *param )
+ {
+@@ -1516,4 +1747,5 @@
+ 
+     return VLC_SUCCESS;
+ }
++
+ }
+diff -u'rNF^function' vlc-0.8.2/modules/gui/wxwindows/timer.cpp mmi-vlc-0.8.2/modules/gui/wxwindows/timer.cpp
+--- vlc-0.8.2/modules/gui/wxwindows/timer.cpp	2005-06-25 06:43:09.000000000 -0700
++++ mmi-vlc-0.8.2/modules/gui/wxwindows/timer.cpp	2006-07-31 02:57:58.000000000 -0700
+@@ -38,6 +38,10 @@
+ #include "wxwindows.h"
+ #include <wx/timer.h>
+ 
++#ifdef HAVE_RIGHTS_XFACE
++#include "rights_xface/rights_xface.h"
++#endif /* HAVE_RIGHTS_XFACE */
++
+ //void DisplayStreamDate( wxControl *, intf_thread_t *, int );
+ 
+ /* Callback prototypes */
+@@ -131,6 +135,14 @@
+         /* Refresh interface */
+         if( p_intf->p_sys->p_input )
+         {
++#ifdef HAVE_RIGHTS_XFACE
++            /* check if it is an rtsp url. */
++            /* if( !strstr(p_intf->p_sys->p_input->input.p_item->psz_name,
++                "rtsp://"  ) ) {
++             */
++            p_main_interface->SetButtonState( p_intf->p_sys->p_input->input.p_item->psz_name );
++#endif /* HAVE_RIGHTS_XFACE */
++
+             p_main_interface->slider->SetValue( 0 );
+ 
+             char *psz_now_playing = vlc_input_item_GetInfo(
+diff -u'rNF^function' vlc-0.8.2/modules/gui/wxwindows/wxwindows.h mmi-vlc-0.8.2/modules/gui/wxwindows/wxwindows.h
+--- vlc-0.8.2/modules/gui/wxwindows/wxwindows.h	2005-06-25 06:43:09.000000000 -0700
++++ mmi-vlc-0.8.2/modules/gui/wxwindows/wxwindows.h	2006-07-31 02:57:58.000000000 -0700
+@@ -43,6 +43,7 @@
+ #include <wx/checkbox.h>
+ #include <wx/wizard.h>
+ #include <wx/taskbar.h>
++#include <wx/splitter.h>
+ #include "vlc_keys.h"
+ 
+ #if (!wxCHECK_VERSION(2,5,0))
+@@ -337,6 +338,15 @@
+     void PrevStream();
+     void NextStream();
+ 
++#ifdef HAVE_RIGHTS_XFACE    
++    void SetButtonState( char * );
++    void EnableFFWDButton( bool enable );
++    void EnableRWNDButton( bool enable );
++    void EnableRecordButton( bool enable );
++    void EnableCCopyButton( bool enable );
++    void EnablePlayButton( bool enable );
++#endif /* HAVE_RIGHTS_XFACE */
++
+     wxBoxSizer  *frame_sizer;
+     wxStatusBar *statusbar;
+ 
+@@ -398,6 +408,8 @@
+ 
+     void OnBookmarks( wxCommandEvent& event );
+     void OnShowDialog( wxCommandEvent& event );
++    void OnRecordStream( wxCommandEvent& event );
++    void OnCCopyStream( wxCommandEvent& event );
+     void OnPlayStream( wxCommandEvent& event );
+     void OnStopStream( wxCommandEvent& event );
+     void OnSliderUpdate( wxScrollEvent& event );
+@@ -859,6 +871,10 @@
+     void UpdateItem( int );
+     void AppendItem( wxCommandEvent& );
+ 
++#ifdef HAVE_RIGHTS_XFACE
++    void BlockRights( int );
++#endif /* HAVE_RIGHTS_XFACE */
++
+     bool b_need_update;
+ 
+ private:
+@@ -890,6 +906,16 @@
+     wxButton *search_button;
+     wxTreeItemId search_current;
+ 
++#ifdef HAVE_RIGHTS_XFACE
++    wxTextCtrl *info_area;
++
++    wxTextAttr *info_attr;
++    wxTextAttr *err_attr;
++    wxTextAttr *warn_attr;
++    wxTextAttr *dbg_attr;
++
++#endif /* HAVE_RIGHTS_XFACE */
++
+     void OnEnDis( wxCommandEvent& event );
+ 
+     /* Sort */
+@@ -914,6 +940,11 @@
+     void OnRepeat( wxCommandEvent& event );
+     void OnLoop ( wxCommandEvent& event );
+ 
++#ifdef HAVE_RIGHTS_XFACE
++    const char * GetSingleSelectionName( wxTreeItemId );
++    void OnSelChangeItem( wxTreeEvent& event );
++#endif /* HAVE_RIGHTS_XFACE */
++
+     void OnActivateItem( wxTreeEvent& event );
+     void OnKeyDown( wxTreeEvent& event );
+     void OnNewGroup( wxCommandEvent& event );
+@@ -931,6 +962,10 @@
+     void OnPopupDel( wxCommandEvent& event );
+     void OnPopupEna( wxCommandEvent& event );
+     void OnPopupInfo( wxCommandEvent& event );
++#ifdef HAVE_RIGHTS_XFACE
++    char * GetRightsStatusStr( const char *psz_name );
++    void UpdateInfoArea( const char * psz_info );
++#endif /* HAVE_RIGHTS_XFACE */
+     void Rebuild( vlc_bool_t );
+ 
+     void Preparse();
+diff -u'rNF^function' vlc-0.8.2/src/input/input.c mmi-vlc-0.8.2/src/input/input.c
+--- vlc-0.8.2/src/input/input.c	2005-06-25 06:43:02.000000000 -0700
++++ mmi-vlc-0.8.2/src/input/input.c	2006-07-31 02:57:58.000000000 -0700
+@@ -661,9 +661,18 @@
+         }
+ 
+         /* Global flag */
+-        p_input->b_can_pace_control = p_input->input.b_can_pace_control;
+-        p_input->b_can_pause        = p_input->input.b_can_pause;
+-
++        p_input->b_can_pace_control  = p_input->input.b_can_pace_control;
++        p_input->b_can_pause         = p_input->input.b_can_pause;
++        
++        /* setting a variable that can be queried by the interface to decide
++           if trickplay needs to be supported at the gui level */
++        p_input->b_can_support_trick = p_input->input.b_can_support_trick; 
++        {
++            vlc_value_t tempval;
++            tempval.b_bool = p_input->b_can_support_trick;
++            var_Change( p_input, "can-support-trick", VLC_VAR_SETVALUE, &tempval, NULL );
++        }
++        
+         /* Fix pts delay */
+         if( p_input->i_pts_delay <= 0 )
+             p_input->i_pts_delay = DEFAULT_PTS_DELAY;
+@@ -1301,7 +1310,7 @@
+             }
+             break;
+         }
+-
++        
+         case INPUT_CONTROL_SET_STATE:
+             if( ( val.i_int == PLAYING_S && p_input->i_state == PAUSE_S ) ||
+                 ( val.i_int == PAUSE_S && p_input->i_state == PAUSE_S ) )
+@@ -1333,6 +1342,48 @@
+                 /* Reset clock */
+                 es_out_Control( p_input->p_es_out, ES_OUT_RESET_PCR );
+             }
++            else if( ( val.i_int == PLAYING_S || val.i_int == PAUSE_S ) && 
++                       ( p_input->i_state == FFWD_S || p_input->i_state == RWND_S ) )
++            {
++                int i_ret;
++                if( p_input->input.p_access )
++                    i_ret = access2_Control( p_input->input.p_access,
++                                             ACCESS_SET_PAUSE_STATE, VLC_TRUE );
++                else
++                    i_ret = demux2_Control( p_input->input.p_demux,
++                                            DEMUX_SET_PAUSE_STATE, VLC_TRUE );
++
++                b_force_update = VLC_TRUE;
++
++                if( i_ret )
++                {
++                    msg_Warn( p_input, "cannot set pause state to break from trickplay " );
++                    val.i_int = p_input->i_state;
++                }
++
++                /* Play given after a pause since strategy to get in and out of trick mode 
++                requires pausing before a play. This gives the server some time to switch streams */
++                if( val.i_int == PLAYING_S && !i_ret ) 
++                {
++                    if( p_input->input.p_access )
++                        i_ret = access2_Control( p_input->input.p_access,
++                                             ACCESS_SET_PAUSE_STATE, VLC_FALSE );
++                    else
++                        i_ret = demux2_Control( p_input->input.p_demux,
++                                            DEMUX_SET_PAUSE_STATE, VLC_FALSE );
++                                            
++                    if( i_ret ) {
++                        msg_Warn( p_input, "cannot set play state to break from trickplay " );
++                        val.i_int = PAUSE_S;                    
++                    }
++                        
++                }
++
++                
++                /* Switch to new state */
++                p_input->i_state = val.i_int;
++                var_Change( p_input, "state", VLC_VAR_SETVALUE, &val, NULL );
++            }
+             else if( val.i_int == PAUSE_S && p_input->i_state == PLAYING_S &&
+                      p_input->b_can_pause )
+             {
+@@ -1368,12 +1419,90 @@
+                 val.i_int = p_input->i_state;
+                 var_Change( p_input, "state", VLC_VAR_SETVALUE, &val, NULL );
+             }
+-            else if( val.i_int != PLAYING_S && val.i_int != PAUSE_S )
++            /* general thing to do when getting into trick mode and getting out of trick mode
++               is to first invoke pause and then the requested action. */
++            /* if trick requested */               
++            else if(( val.i_int == FFWD_S || val.i_int == RWND_S ) 
++                      && p_input->b_can_support_trick )
++            {
++                int i_ret;
++                float f_scale;
++                
++                /* do only if current state is not pause else not required 
++                   We need to pause for every state other than "pause_s" (including ffwd and rwnd ) 
++                 */
++                /*
++                if ( p_input->i_state != PAUSE_S ) {
++                
++                    if( p_input->input.p_access )
++                        i_ret = access2_Control( p_input->input.p_access,
++                                                 ACCESS_SET_PAUSE_STATE, VLC_TRUE );
++                    else
++                        i_ret = demux2_Control( p_input->input.p_demux,
++                                                DEMUX_SET_PAUSE_STATE, VLC_TRUE );
++                }
++                
++
++
++                if( i_ret )
++                {
++                    msg_Warn( p_input, "Pausing before trickplay failed. Aborting trick function." );
++                    val.i_int = p_input->i_state;
++                    goto TRICK_END;
++                }
++                */ 
++                if( val.i_int == FFWD_S ) 
++                    f_scale = 12.0;
++                else if( val.i_int == RWND_S )
++                    f_scale = -12.0;
++                    
++                                               
++                if( p_input->input.p_access ) 
++                        i_ret = access2_Control( p_input->input.p_access,
++                                             ACCESS_SET_SCALE, f_scale );
++                else 
++                       i_ret = demux2_Control( p_input->input.p_demux,
++                                            DEMUX_SET_SCALE, f_scale );                                                            
++
++                if( i_ret )
++                {
++                    msg_Warn( p_input, "Trick function failed. " );
++                    /* It will be in paused state at this point. 
++                       Correct implementation should revert back to original state. 
++                       Not implementing that for now */
++                    val.i_int = PAUSE_S;
++                }
++TRICK_END:
++                /* Switch to new state */
++                p_input->i_state = val.i_int;
++                var_Change( p_input, "state", VLC_VAR_SETVALUE, &val, NULL );
++                b_force_update = VLC_TRUE;                
++                
++            }
++            else if( ( val.i_int == FFWD_S || val.i_int == RWND_S ) && !p_input->b_can_support_trick )
++            {
++                /* Correct "state" value */
++                val.i_int = p_input->i_state;
++                var_Change( p_input, "state", VLC_VAR_SETVALUE, &val, NULL );
++                b_force_update = VLC_TRUE;                
++            }
++            else if( val.i_int != PLAYING_S && val.i_int != PAUSE_S 
++                   && val.i_int != FFWD_S && val.i_int != RWND_S ) 
+             {
+                 msg_Err( p_input, "invalid state in INPUT_CONTROL_SET_STATE" );
+             }
+             break;
+ 
++        case INPUT_CONTROL_CHECK_TRICK_SUPPORT:
++        {
++            vlc_value_t tempval;
++
++            /* We dont do anything fancy here. Just decide if trick support is to be turned on or not 
++               and set the value of the variable */
++            tempval.b_bool = p_input->b_can_support_trick;
++            var_Change( p_input, "can-support-trick", VLC_VAR_SETVALUE, &tempval, NULL );
++            break;            
++        }
+         case INPUT_CONTROL_SET_RATE:
+         case INPUT_CONTROL_SET_RATE_SLOWER:
+         case INPUT_CONTROL_SET_RATE_FASTER:
+@@ -1958,6 +2087,7 @@
+     if( in->p_demux )
+     {
+         int64_t i_pts_delay;
++        int i_ret;
+ 
+         /* Get infos from access_demux */
+         demux2_Control( in->p_demux,
+@@ -1976,7 +2106,8 @@
+                         &in->b_can_pace_control );
+         demux2_Control( in->p_demux, DEMUX_CAN_PAUSE,
+                         &in->b_can_pause );
+-
++        demux2_Control( in->p_demux, DEMUX_CAN_SUPPORT_TRICK,
++                        &in->b_can_support_trick);
+         /* FIXME todo
+         demux2_Control( in->p_demux, DEMUX_CAN_SEEK,
+                         &val.b_bool );
+@@ -2069,6 +2200,8 @@
+                              &in->b_can_pace_control );
+             access2_Control( in->p_access, ACCESS_CAN_PAUSE,
+                              &in->b_can_pause );
++            access2_Control( in->p_access, ACCESS_CAN_SUPPORT_TRICK,
++                             &in->b_can_support_trick);
+             access2_Control( in->p_access, ACCESS_CAN_SEEK,
+                              &val.b_bool );
+             var_Set( p_input, "seekable", val );
+diff -u'rNF^function' vlc-0.8.2/src/input/input_internal.h mmi-vlc-0.8.2/src/input/input_internal.h
+--- vlc-0.8.2/src/input/input_internal.h	2005-06-25 06:43:02.000000000 -0700
++++ mmi-vlc-0.8.2/src/input/input_internal.h	2006-07-31 02:57:58.000000000 -0700
+@@ -33,6 +33,8 @@
+     INPUT_CONTROL_SET_RATE,
+     INPUT_CONTROL_SET_RATE_SLOWER,
+     INPUT_CONTROL_SET_RATE_FASTER,
++    
++    INPUT_CONTROL_CHECK_TRICK_SUPPORT,
+ 
+     INPUT_CONTROL_SET_POSITION,
+     INPUT_CONTROL_SET_POSITION_OFFSET,
+diff -u'rNF^function' vlc-0.8.2/src/input/var.c mmi-vlc-0.8.2/src/input/var.c
+--- vlc-0.8.2/src/input/var.c	2005-06-25 06:43:02.000000000 -0700
++++ mmi-vlc-0.8.2/src/input/var.c	2006-07-31 02:57:58.000000000 -0700
+@@ -48,6 +48,9 @@
+                              vlc_value_t oldval, vlc_value_t newval, void * );
+ static int RateCallback    ( vlc_object_t *p_this, char const *psz_cmd,
+                              vlc_value_t oldval, vlc_value_t newval, void * );
++static int TrickSupportCallback( vlc_object_t *p_this, char const *psz_cmd,
++                             vlc_value_t oldval, vlc_value_t newval, void * );
++
+ static int PositionCallback( vlc_object_t *p_this, char const *psz_cmd,
+                              vlc_value_t oldval, vlc_value_t newval, void * );
+ static int TimeCallback    ( vlc_object_t *p_this, char const *psz_cmd,
+@@ -82,6 +85,15 @@
+     var_Change( p_input, "state", VLC_VAR_SETVALUE, &val, NULL );
+     var_AddCallback( p_input, "state", StateCallback, NULL );
+ 
++    /* Trickplay */
++    /* Call to check if trickplay is supported by modules */
++    var_Create( p_input, "check-trick-support", VLC_VAR_VOID );
++    var_AddCallback( p_input, "check-trick-support", TrickSupportCallback, NULL);
++ 
++    var_Create( p_input, "can-support-trick", VLC_VAR_BOOL );
++    val.b_bool = VLC_FALSE;
++    var_Change( p_input, "can-support-trick", VLC_VAR_SETVALUE, &val, NULL);
++
+     /* Rate */
+     var_Create( p_input, "rate", VLC_VAR_INTEGER );
+     val.i_int = p_input->i_rate;
+@@ -94,7 +106,6 @@
+     var_Create( p_input, "rate-faster", VLC_VAR_VOID );
+     var_AddCallback( p_input, "rate-faster", RateCallback, NULL );
+ 
+-
+     /* Position */
+     var_Create( p_input, "position",  VLC_VAR_FLOAT );
+     var_Create( p_input, "position-offset",  VLC_VAR_FLOAT );
+@@ -463,7 +474,8 @@
+     input_thread_t *p_input = (input_thread_t*)p_this;
+ 
+ 
+-    if( newval.i_int == PLAYING_S || newval.i_int == PAUSE_S )
++    if( newval.i_int == PLAYING_S || newval.i_int == PAUSE_S || 
++        newval.i_int == FFWD_S || newval.i_int == RWND_S )
+     {
+         input_ControlPush( p_input, INPUT_CONTROL_SET_STATE, &newval );
+         return VLC_SUCCESS;
+@@ -495,6 +507,20 @@
+     return VLC_SUCCESS;
+ }
+ 
++static int TrickSupportCallback( vlc_object_t *p_this, char const *psz_cmd,
++                                 vlc_value_t oldval, vlc_value_t newval, void *p_data )
++{
++    input_thread_t *p_input = (input_thread_t*)p_this;
++    vlc_value_t val;
++    
++    if( !strcmp( psz_cmd, "check-trick-support" ) )
++    {
++        input_ControlPush( p_input, INPUT_CONTROL_CHECK_TRICK_SUPPORT, NULL );
++    }
++    
++    return VLC_SUCCESS;
++}
++                                 
+ static int PositionCallback( vlc_object_t *p_this, char const *psz_cmd,
+                              vlc_value_t oldval, vlc_value_t newval,
+                              void *p_data )
+diff -u'rNF^function' vlc-0.8.2/src/playlist/item-ext.c mmi-vlc-0.8.2/src/playlist/item-ext.c
+--- vlc-0.8.2/src/playlist/item-ext.c	2005-06-25 06:43:02.000000000 -0700
++++ mmi-vlc-0.8.2/src/playlist/item-ext.c	2006-07-31 02:57:58.000000000 -0700
+@@ -151,6 +151,13 @@
+          i_mode |= PLAYLIST_APPEND;
+     }
+ 
++#ifdef HAVE_RIGHTS_XFACE
++    /* causes the rights xface to cache the rights related to the uri */
++    var_SetString( p_playlist, "show-rights-info", "Fetching rights..." );
++    fetchRights( p_item->input.psz_uri );
++    var_SetString( p_playlist, "show-rights-info", "Fetching rights...Done" );
++#endif /* HAVE_RIGHTS_XFACE */
++
+     msg_Dbg( p_playlist, "adding playlist item `%s' ( %s )",
+              p_item->input.psz_name, p_item->input.psz_uri );
+ 
+@@ -679,7 +686,11 @@
+ 
+     msg_Dbg( p_playlist, "deleting playlist item `%s'",
+                           p_item->input.psz_name );
+-
++#if 0
++#ifdef HAVE_RIGHTS_XFACE
++    releaseRights( p_item->input.psz_name );
++#endif /* HAVE_RIGHTS_XFACE */
++#endif 
+     /* Remove the item from all its parent nodes */
+     for ( i= 0 ; i < p_item->i_parents ; i++ )
+     {
+diff -u'rNF^function' vlc-0.8.2/src/playlist/playlist.c mmi-vlc-0.8.2/src/playlist/playlist.c
+--- vlc-0.8.2/src/playlist/playlist.c	2005-06-25 06:43:02.000000000 -0700
++++ mmi-vlc-0.8.2/src/playlist/playlist.c	2006-07-31 02:57:58.000000000 -0700
+@@ -99,6 +99,14 @@
+     val.b_bool = VLC_TRUE;
+     var_Set( p_playlist, "intf-show", val );
+ 
++#ifdef HAVE_RIGHTS_XFACE
++    var_Create( p_playlist, "rights-block", VLC_VAR_BOOL );
++    val.b_bool = VLC_FALSE;
++    var_Set( p_playlist, "rights-block", val );
++
++    var_Create( p_playlist, "show-rights-info", VLC_VAR_STRING );
++#endif /* HAVE_RIGHTS_XFACE */
++
+ 
+     /* Variables to control playback */
+     var_CreateGetBool( p_playlist, "play-and-stop" );
+@@ -218,6 +226,10 @@
+     var_Destroy( p_playlist, "repeat" );
+     var_Destroy( p_playlist, "loop" );
+ 
++#ifdef HAVE_RIGHTS_XFACE
++    var_Destroy( p_playlist, "rights_block" );
++#endif /* HAVE_RIGHTS_XFACE */
++
+     playlist_Clear( p_playlist );
+ 
+     for( i = p_playlist->i_views - 1; i >= 0 ; i-- )
+@@ -609,7 +621,6 @@
+              * Get the next item to play */
+             p_item = NextItem( p_playlist );
+ 
+-
+             /* We must stop */
+             if( p_item == NULL )
+             {
+@@ -1035,10 +1046,26 @@
+     msg_Dbg(p_playlist,"next item found in "I64Fi " us", mdate()-start );
+ #endif
+ 
++
+     if( p_new == NULL )
+     {
+         msg_Info( p_playlist, "nothing to play" );
++    } 
++#ifdef HAVE_RIGHTS_XFACE
++    else if( canDoPlay( p_new->input.psz_name ) ) {
++        prepareForPlay( p_new->input.psz_name );
++    } else {
++        msg_Dbg( p_playlist, "dont have enough rights to play %s. Blocking play", p_new->input.psz_name );
++        vlc_mutex_unlock( &p_playlist->object_lock );
++        var_SetBool( p_playlist, "rights-block", VLC_TRUE );
++        vlc_mutex_lock( &p_playlist->object_lock );
++
++        /* We dont want to loop in a playlist with media entries that we dont
++         * have rights to play. Wait for the user to select a specific entry to
++         * play. */
++        p_new = NULL;
+     }
++#endif /* HAVE_RIGHTS_XFACE */
+     return p_new;
+ }
+ 
+diff -u'rNF^function' vlc-0.8.2/src/video_output/video_output.c mmi-vlc-0.8.2/src/video_output/video_output.c
+--- vlc-0.8.2/src/video_output/video_output.c	2005-06-25 06:43:02.000000000 -0700
++++ mmi-vlc-0.8.2/src/video_output/video_output.c	2006-07-31 02:57:58.000000000 -0700
+@@ -831,7 +831,7 @@
+             /* Compute FPS rate */
+             p_vout->p_fps_sample[ p_vout->c_fps_samples++ % VOUT_FPS_SAMPLES ]
+                 = display_date;
+-
++#if 0
+             if( !p_picture->b_force &&
+                 p_picture != p_last_picture &&
+                 display_date < current_date + p_vout->render_time )
+@@ -857,7 +857,7 @@
+ 
+                 continue;
+             }
+-
++#endif
+             if( display_date >
+                 current_date + p_vout->i_pts_delay + VOUT_BOGUS_DELAY )
+             {
+diff -u'rNF^function' vlc-0.8.2/src/vlc.c mmi-vlc-0.8.2/src/vlc.c
+--- vlc-0.8.2/src/vlc.c	2005-06-25 06:43:02.000000000 -0700
++++ mmi-vlc-0.8.2/src/vlc.c	2006-07-31 02:57:58.000000000 -0700
+@@ -37,6 +37,7 @@
+ #endif
+ 
+ #include <vlc/vlc.h>
++#include <ca_dec/ca_dec.h>
+ 
+ /*****************************************************************************
+  * Local prototypes.
+@@ -73,6 +74,12 @@
+     }
+ #endif
+ 
++#ifdef HAVE_CAS
++#ifndef HAVE_RIGHTS_XFACE
++    vlcGetUserInfo( i_argc, ppsz_argv );
++#endif /* HAVE_RIGHTS_XFACE */
++#endif /* HAVE_CAS */
++
+     /* Create a libvlc structure */
+     i_ret = VLC_Create();
+     if( i_ret < 0 )

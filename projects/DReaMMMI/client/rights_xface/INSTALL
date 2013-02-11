@@ -1,0 +1,16 @@
+Building
+--------
+
+Building this library requires a JAVA installation since this library, invokes
+the JVM and runs the MMIRightsManager.jar library within the JVM. It then
+channels all requests it gets to the MMIRightsManager object in the JVM.
+
+To specify the location of your java installation set the JAVA_HOME environment
+variable and then invoke `make`.
+
+To summarize:
+
+0. edit Makefile; set INSTALL_PATH
+1. export JAVA_HOME=<java_path>
+2. make
+3. make install

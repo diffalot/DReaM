@@ -1,0 +1,50 @@
+<!--
+ The contents of this file are subject to the terms
+ of the Common Development and Distribution License
+ (the "License").  You may not use this file except
+ in compliance with the License.
+
+ You can obtain a copy of the license at
+ http://www.opensource.org/licenses/cddl1.php
+ See the License for the specific language governing
+ permissions and limitations under the License.
+
+ When distributing Covered Code, include this CDDL
+ HEADER in each file and include the License file at
+ http://www.opensource.org/licenses/cddl1.php.  If 
+ applicable, add the following below this CDDL HEADER, 
+ with the fields enclosed by brackets "[]" replaced 
+ with your own identifying information: 
+ Portions Copyright [yyyy]
+ [name of copyright owner]
+--> 
+
+<!--
+ $(@)license-server.xml $Revision: 1.2 $ $Date: 2006/04/06 21:39:43 $
+
+ Copyright 2006 Sun Microsystems, Inc. All Rights Reserved.
+-->
+<configuration>
+<!-- Begin Sample Pointbase configuration -->
+<database>
+<drivername>com.pointbase.jdbc.jdbcUniversalDriver</drivername>
+<databaseurl>jdbc:PointBase://localhost:9092/sample</databaseurl>
+<username>PBPUBLIC</username>
+<password>PBPUBLIC</password>
+<listTableSql>select * from systables</listTableSql>
+<tableNameColumnNumber>2</tableNameColumnNumber>
+</database>
+<!-- End Sample Pointbase configuration -->
+<!-- Begin Sample Oracle configuration, based on ojdbc14.jar from Oracle --> 
+<!-- <database>
+<drivername>oracle.jdbc.xa.client.OracleXADataSource</drivername> 
+<databaseurl>jdbc:oracle:thin:@server:1521:SID</databaseurl>
+<username>scott</username>
+<password>tiger</password>
+<listTableSql>select * from cat</listTableSql>
+<tableNameColumnNumber>1</tableNameColumnNumber>
+</database> -->
+<!-- End Sample Oracle configuration -->
+<operaProxyURL>http://localhost:8060/</operaProxyURL>
+<authenticate>true</authenticate>
+</configuration>

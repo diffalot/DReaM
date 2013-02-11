@@ -1,0 +1,95 @@
+* The License Server will be a Servlet deployed in the Tomcat server or
+the Sun app server
+
+* The user contacts the license server (from a JSP page) requesting the
+license, providing him with the User ID (from the opera server), Content
+ID (provided by the shop) and the Shop ID.
+
+* The license server creates a new session for this client. This session
+maintains the user ID, content ID, Shop ID, session ID and a validation
+field implemented using the HttpSession object. Using HttpSession has one 
+advantage over a hash table which is - Sessions can be invalidated easily.
+
+*  The License Server checks if the client has been previously validated
+i.e. if the validation field is TRUE. If so it has to generate the license
+and send it to the client. 
+
+* If the client has not been validated then the License Server redirects
+the client to the Opera Proxy which eventually sends it to the Opera
+Server. The Session ID is also passsed to the Proxy Server.
+
+* Once authenticated the License Server will receive the request from the
+client (a redirect from the Opera Server). This will contain the License
+Release Message (LRM).
+
+Regarding the LRM....here is a look at the design (based on our
+discussion)
+
+* Eu = Encoding function using the Public key of the
+License Server
+* Ep = Encoding function using the Private key of the Opera Server
+* Voucher = Parameters.
+* LRM = Clear URL + Eu(Voucher)
+* Signature(LRM) = Ep(Hash(LRM))
+* Message M = LRM + Signature(LRM)
+
+Steps done at the Opera Server
+------------------------------
+
+**Generating the LRM
+
+When a request comes in to verify that the client has a license (via
+the Opera Proxy) the Opera Server can retrieve the client information,
+authenticate it and if it has the rights then it can generate the Voucher
+using the client information and encrypts it with the Public key of the
+License Server. This can be done by using the java.security package. The
+KeyPairGenerator class can be used to generate asymmetric keys (prior to
+deployment and hardcoded in the application or taken from a file like
+web.xml - used too initialize the servlet). The encryption can also be
+done using this package.
+
+See http://java.sun.com/developer/JDCTechTips/2004/tt0116.html for
+genrating keys as well as encrypting using keys
+
+This along with the clear URL will now be the LRM
+
+**Generating the Signature
+
+The signature can be generated using the java.security package. Here is
+code that will do it (Not tested!!)
+
+       byte[] signedLRM;
+       byte[] LRM; //contains the LRM
+       PrivateKey priv; //read the private key from a file
+                        //previously generated
+       Signature sig = Signature.getInstance("RSA");
+       sig.initSign(priv)
+       sig.update(LRM);
+       signedLRM = sig.sign();
+
+**The signedLRM and the LRM can then be redirected to the License Server
+via the client
+
+Steps Done at the License Server
+--------------------------------
+
+** Use its private key to decrypt Eu(Voucher) (can use java.security package)
+
+** Verify the signature sent by the Opera key (can use java.security package)
+
+** See if a session exists for the client and if it does then it creates the license using either MPEG21 rel or ODrl. MPEG21 rel and ODrl are both descibed using XML schemas.  Using the Java Architecture for XML binding (JAXB) which is a part of the Java Web Services Developers Pack (JWSDP) one can use the JAXB compiler to generate Java classes for each of the elements in the XML schema (done only once in the beginning). JAXB takes the xsd file as input and generates the Java classes. These classes can then be compiled and can be used in a Java file as any other class. The advantage of using this is that creation of these XML files can be automated, and can be done easily. Once the classes are created, a "content tree" can be created in the license generation sub-application which can be then marshalled to form an XML file. A content tree represents the XML tree structure but is a tree of Java Objects (using the java classes for each of the elements from the XML file). This XML file can then be sent to the client, who can then use this XML file to play the content. This sub-application (to generate licenses) can also be deployed as an application in the Tomcat server or the Sun App Server.
+
+See http://java.sun.com/developer/technicalArticles/WebServices/jaxb/index.html   {for JAXB}
+See http://www.odrl.net			     {for ODRL}
+See http://www.odrl.net/1.1/ODRL-EX-11.xsd   {for ODRL schema} 
+
+
+There is an SDK provided by contenguard called "MPEG REL SDK 1.0 for Java" which looks promising as it allows one to create licenses which are also in XML. It doesnt say if it uses MPEG21 rel which I guess it doesnt and if we want to use standards then I guess we should not use it. However, a look at this will not do harm and probably can get us thinking about some design aspects for the sub-application for license generation using the mpeg21 rel or odrl xml schemas.
+
+The license is sent based on the content id as well as the shop id.
+
+
+
+
+
+

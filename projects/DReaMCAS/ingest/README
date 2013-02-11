@@ -1,0 +1,68 @@
+
+BUILD INSTRUCTIONS
+
+1. Run ./bootstrap (you must have libtools and autotools and the stream editor
+   'sed' in your path)
+2. Run 'configure' after setting environment variable LD to point to the 
+   compiler You are using. 
+   
+   For Sun Compilers, use the C++ compiler to compile both the C and C++ files.
+  
+   bash$ CC=CC CXX=CC LD=CC ./configure --with-cacrypto=<cacrytpo-install-path> --with-boost-dir=<libboost install location>
+   
+   For GNU compilers:
+   
+   bash$ CC=gcc CXX=g++ LD=gcc ./configure \ --with-cacrypto=<cacrytpo-install-path> --with-boost-dir=<libboost install location>
+   
+   (Note that the default linker (ld) used by libtool seems to have some trouble
+   in getting the shared libraries to work cleanly)
+   
+   The ca_crypto sources are available in the DReaMCAS/common/ca_crypto library.
+3. make
+
+
+We have used Version 5.8 of Sun C and C++ compilers and Version 3.4.5 of gcc and
+g++ to successfully build the DReaMCAS codebase.
+
+
+DEPENDENCIES
+
+The ingest code has the following dependencies:
+
+1. ca_crypto library: This is indicated in step 2 of the Build instructions 
+   above.
+2. C++ Boost library from http://www.boost.org.
+ 
+   For compiling on Solaris using Sun's compilers, See this Simon Atanasyan blog
+   entry: http://blogs.sun.com/roller/page/sga?entry=boost_mini_howto
+   
+   The version used (and expected by the configure script) is version 1_32. 
+  
+ (NOTE: The dependency on libs/mmp was removed by using libs/mpeg2 for parsing MPEG2
+        streams. So, the ingest code should build on non-Solaris platforms, as well.) 
+
+
+USAGE
+
+The encryption ingest implementation which use the ca_crypto libraries are 
+found under apps/cas_encrypt.  There are two applications available: 
+encryptTs and emmEncrypt.  The encryptTs encrypts an MPEG-2 TS using 
+either a provided or default stream key.  It also outputs the access key
+in an EMM file.  The emmEncrypt is used to encrypt the EMM using the 
+public key of the recipient.  Please refer to the README.txt file found 
+in the apps/cas_encrypt directory for usage instructions.  For more 
+information on the specifications of DReaM-CAS, please visit 
+http://www.openmediacommons.org 
+ 
+
+LICENSE
+
+The License terms under which this code is released is documented in the file: cddl1.txt
+
+Additional copyright notices and license terms applicable to portions of the
+ Software are set forth in the THIRDPARTYLICENSEREADME.txt file.  In addition to
+ any terms and conditions of any third party opensource/freeware license
+ identified in the THIRDPARTYLICENSEREADME.txt file, the disclaimer of warranty
+ and limitation of liability provisions in paragraphs 4 and 5 of the Sun binary
+ code license shall apply to all Software in this distribution.   
+         

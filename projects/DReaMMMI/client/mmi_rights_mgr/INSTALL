@@ -1,0 +1,32 @@
+To build:
+---------
+
+Building this library requires the MMICommon.jar which can be located in the
+DReaM/DReaMMMI/common project directory. This jar file must be placed in
+libs/java/
+
+To build:
+
+> ant
+
+Optional:
+You may specify an install directory in the build.xml file where you want to
+install all the jar files required by a client. The MMICommon.jar and the
+MMIRightsManager.jar will be placed in this install directory. After the install
+you will also have to include these jars in your CLASSPATH for things to work.
+
+> ant install-jars
+> export CLASSPATH=${CLASSPATH}:<jar-install-dir>/MMICommon.jar:<jar-install-dir>/MMIRightsManager.jar
+
+Running
+-------
+This will depend upon the client and how these libraries are intended to be used
+by the client. For running with the VLC client please see instructions in the
+DReaM/misc/vlc-update
+
+Other executables:
+------------------
+A test MMIClient can be executed to check the connectivity with the MMIServer.
+To run this client:
+
+java -cp build/libs/java/MMIRightsManager.jar org.omc.dream.mmi.client.MMIClient http://server:port/DReaMLicensor/LicenseServer

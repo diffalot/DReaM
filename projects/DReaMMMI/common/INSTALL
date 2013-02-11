@@ -1,0 +1,36 @@
+DReaM/DReaMMMI/common/INSTALL
+
+Prerequisites
+-------------
+JavaCC 4.0 - Java Compiler-Compiler 4.0 (found at http://javacc.dev.java.net)
+Apache Ant 1.6.5 - http://ant.apache.org
+JDK1.4 or greater - http://java.sun.com
+
+
+Build Instructions
+------------------
+1) Download the binary distribution from http://javacc.dev.java.net and extract.
+
+2) Modify the "javacchome" entry in DReaM/DReaMMMI/common/build.xml to reflect 
+the correct path of the javacc
+
+3) Go to the "DReaM/DReaMMI/common" directory and run ant.  This should result 
+in the generation of the "MMICommon.jar" in the DReaM/DReaM/common/dist
+
+
+Troubleshooting:
+----------------
+1) Java code not compiling on Linux platform
+
+Solution: Check if the version of java is correct.  If it is reported as a 
+gij (GNU libgcj), then download the appropriate Sun JDK and add that to 
+the PATH.
+
+2) Ant is reporting the following error:
+...
+BUILD FAILED
+/cvs/dream/DReaM/DReaMMMI/common/build.xml:14: Could not create task or type of type: javacc.
+...
+
+Solution: Check the ant version (1.6.5) and make sure that the binary 
+distribution of Ant from http://ant.apache.org is used. 

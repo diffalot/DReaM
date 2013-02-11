@@ -1,0 +1,17 @@
+This directory contains source code patch that may be applied to the
+Videolan Client media player source code. The patch enables the player to
+interact with a DReaMCAS and DReaMMMI servers.
+
+The DReaMCAS functionality has been implemented as per the DReaMCAS
+specification and is capable of acquiring a DReaMCAS license to decrypt and
+decode DReaMCAS encrypted media content. It also enables the VLC client to send
+fastforward and rewind RTSP events, which was not supported as of VLC v0.8.2.
+
+The DReAMMMI functionality has been implemented so that it employs a generic
+rights interface plugin to discern if the player is permitted to perform various
+actions such as play, fastforward, rewind etc. The implementation is incomplete
+and the player does not make use of a lot of other DReaMMMI functionality such
+as transcoding, rights management for counts, duration or period.
+
+Please refer to the INSTALL file for instructions on how to build and run the
+player.

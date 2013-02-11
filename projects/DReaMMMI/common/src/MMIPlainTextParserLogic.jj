@@ -1,0 +1,1135 @@
+/*
+ * The contents of this file are subject to the terms
+ * of the Common Development and Distribution License
+ * (the "License").  You may not use this file except
+ * in compliance with the License.
+ *
+ * You can obtain a copy of the license at
+ * http://www.opensource.org/licenses/cddl1.php
+ * See the License for the specific language governing
+ * permissions and limitations under the License.
+ *
+ * When distributing Covered Code, include this CDDL
+ * HEADER in each file and include the License file at
+ * http://www.opensource.org/licenses/cddl1.php.  If 
+ * applicable, add the following below this CDDL HEADER, 
+ * with the fields enclosed by brackets "[]" replaced 
+ * with your own identifying information: 
+ * Portions Copyright [yyyy]
+ * [name of copyright owner]
+ */ 
+
+/*
+ * $(@)__REPLACE__ $Revision: 1.1 $ $Date: 2006/09/20 01:28:22 $
+ * 
+ * Copyright 2006 Sun Microsystems, Inc. All Rights Reserved.
+ */
+
+options {
+  LOOKAHEAD = 7;
+  CHOICE_AMBIGUITY_CHECK = 2;
+  OTHER_AMBIGUITY_CHECK = 1;
+  STATIC = false;
+  DEBUG_PARSER = false;
+  DEBUG_LOOKAHEAD = false;
+  DEBUG_TOKEN_MANAGER = false;
+  ERROR_REPORTING = false;
+  JAVA_UNICODE_ESCAPE = false;
+  UNICODE_INPUT = false;
+  IGNORE_CASE = false;
+  USER_TOKEN_MANAGER = false;
+  USER_CHAR_STREAM = false;
+  BUILD_PARSER = true;
+  BUILD_TOKEN_MANAGER = true;
+  SANITY_CHECK = true;
+  FORCE_LA_CHECK = true;
+}
+  
+
+PARSER_BEGIN(MMIPlainTextParserLogic)
+/*
+ * The contents of this file are subject to the terms
+ * of the Common Development and Distribution License
+ * (the "License").  You may not use this file except
+ * in compliance with the License.
+ *
+ * You can obtain a copy of the license at
+ * http://www.opensource.org/licenses/cddl1.php
+ * See the License for the specific language governing
+ * permissions and limitations under the License.
+ *
+ * When distributing Covered Code, include this CDDL
+ * HEADER in each file and include the License file at
+ * http://www.opensource.org/licenses/cddl1.php.  If 
+ * applicable, add the following below this CDDL HEADER, 
+ * with the fields enclosed by brackets "[]" replaced 
+ * with your own identifying information: 
+ * Portions Copyright [yyyy]
+ * [name of copyright owner]
+ */ 
+
+/*
+ * $(@)MMIPlainTextParserLogic.jj
+ * 
+ * Copyright 2006 Sun Microsystems, Inc. All Rights Reserved.
+ */
+
+package org.omc.dream.mmi.common;
+
+import java.util.Vector;
+import java.io.*;
+import java.util.logging.Logger;
+
+public class MMIPlainTextParserLogic {
+	private static Logger logger = Logger.getLogger(MMIPlainTextParserLogic.class.getName());
+	private boolean started;
+
+	public static void main(String[] args) throws ParseException {
+		MMIPlainTextParserLogic parser = new MMIPlainTextParserLogic(System.in);
+		try {
+			MMIMessage mmiMessage = parser.parseMessage(null);
+			System.out.println(mmiMessage.print("\n"));
+		} catch (ParseException pe) {
+			System.out.println("Parse error: "+pe.getMessage());
+		}
+	}
+
+	public MMIMessage parseMessage(Reader r) throws ParseException {
+		if(r != null) {
+			this.ReInit(r);
+		} 
+		return this.Parse();
+	}
+}
+
+PARSER_END(MMIPlainTextParserLogic)
+
+SKIP :
+{
+          "\r"
+        | "\n"
+	| "&"
+}
+
+TOKEN :
+{
+          < MMIVERSION: "MMIVersion" >
+        | < MMIMESSAGETYPE: "MMIMessageType" >
+        | < IDENTITY: "Identity" >
+        | < AUTHSERVICEID: "AuthServiceId" >
+        | < AUTHTKN: "AuthTkn" >
+        | < DEVICE: "Device" >
+        | < LOCATIONID: "LocationId" >
+        | < DEVICEID: "DeviceId" >
+        | < RIGHTS: "Rights" >
+        | < PROFILEID: "ProfileId" >
+        | < REQELEMID: "ReqElemId" >
+        | < CONTENTID: "ContentId" >
+        | < SERVICEID: "ServiceId" >
+        | < VERBID: "VerbId" >
+        | < VERB: "Verb" >
+        | < COUNT: "Count" >
+        | < DURATION: "Duration" >
+        | < PERIOD: "Period" >
+        | < SIGNATURE: "Signature" >
+        | < SIGALG: "SigAlg" >
+        | < RESPONSEID: "ResponseId" >
+        | < STATUS: "Status" >
+        | < REQHASH: "ReqHash" >
+        | < RESPONSE: "Response" >
+        | < NOTIFICATION: "Notification" >
+        | < HINT: "Hint" >
+        | < HINTINDEXNUM: "HintIndexNum" >
+        | < LABEL: "Label" >
+        | < KEYS: "Keys" >
+	| < HASHALG: "HashAlg" >
+	| < REQUESTHASH: "RequestHash" >
+	| < #ALPHA: ["a"-"z"] | ["A"-"Z"] >
+	| < #DIGIT: ["0"-"9"] >
+        | < EQUAL: "=" >
+        | < DOT: "." >
+	| < COMMA: "," >
+	| < STRING: ( (<ALPHA>) | (<DIGIT>) )+ > 
+	| < UNRESERVED: "-" | "_" | "!" | "~" | "*" | "'" | "(" | ")" | ":" | "/" | "#" | "@" | "?" | ";" | "+" | "$" > /* missing "&", "=" */
+	| < PERCENT: "%" >
+}
+
+
+String URI():
+{
+	Token token;
+	StringBuilder sb = new StringBuilder(); 
+}
+{
+	(
+	(token=<STRING> | token=<DOT> | token=<COMMA> | token=<UNRESERVED>)
+	{
+		sb.append(token.image);
+	}
+	)+
+	{
+		return sb.toString();
+	}
+}
+
+String KEY(): 
+{
+	Token token;
+	StringBuilder sb = new StringBuilder();
+}
+{	
+	(
+	(token=<STRING> | token=<PERCENT>)
+	{
+		sb.append(token.image);
+	}
+	)+
+	{
+		return sb.toString();
+	}
+}
+
+MMIMessage Parse() :
+{
+	MMIMessage mmiMessage;
+}
+{
+	mmiMessage = MMIMessage()
+	{
+		return mmiMessage;
+	}
+	|
+	parseError()
+}	
+
+JAVACODE
+void parseError() {
+	throw new ParseException("ParseError");
+}
+
+MMIVersion MMIVersion() : 
+{
+	Token strMajVer;
+	Token strMinVer;
+}
+{
+	try {
+        	<MMIVERSION> <EQUAL> strMajVer=<STRING> <DOT> strMinVer=<STRING> 
+	} catch(ParseException pe) {
+		throw new ParseException("ParseError");
+	}
+	{ 
+		try {
+	  		return new MMIVersion(strMajVer.image, strMinVer.image);  
+		} catch(InvalidMMIObjectException immoe) {
+			throw new ParseException("ParseError");
+		}
+	}	
+}
+
+MMIMessage MMIMessage() : 
+{
+	MMIMessage mmiMessage = new MMIMessage(); 
+	MMIVersion mmiVersion; 
+	MMIMessageType mmiMessageType;
+	MMIRequest mmiRequest;
+	MMIResponse mmiResponse;
+}
+{
+	try {
+	mmiVersion = MMIVersion() 
+	(
+		  mmiRequest = MMIRequest() 
+		  {
+			mmiMessage.setMMIDataObject(mmiRequest);
+		  }
+		| 
+		  mmiResponse=MMIResponse()
+		  {
+			mmiMessage.setMMIDataObject(mmiResponse);
+		  }
+	)
+	{ 
+	  mmiMessage.setMMIVersion(mmiVersion); 
+	  return mmiMessage; 
+	}
+	} catch(ParseException pe) {
+		throw new ParseException("ParseError");
+	}
+}
+
+MMIRequest MMIRequest() : 
+{
+	MMIRequest mmiRequest = new MMIRequest();
+	MMIMessageType mmiMessageType;
+	IdentitySegment identitySegment;
+	DeviceSegment deviceSegment;
+	RightsSegment rightsSegment;
+	SignatureSegment signatureSegment;	
+}
+{
+	mmiMessageType = MMIMessageType()
+	{
+		try {
+		mmiRequest.setMMIMessageType(mmiMessageType.getMMIMessageType());
+		} catch (InvalidMMIObjectException imoe) {
+			imoe.printStackTrace();
+			throw new ParseException("Parse Error");
+		}
+	}
+	
+	identitySegment = IdentitySegment() 
+	{
+		mmiRequest.setIdentitySegment(identitySegment);
+	}
+	[deviceSegment = DeviceSegment()
+	{
+		mmiRequest.setDeviceSegment(deviceSegment);
+	}
+	]
+	rightsSegment = RightsSegment() 
+	{
+		mmiRequest.setRightsSegment(rightsSegment);
+	}
+	[signatureSegment = SignatureSegment()
+	{
+		mmiRequest.setSignatureSegment(signatureSegment);
+	}
+	]
+	{
+		return mmiRequest;
+	}
+}
+
+MMIMessageType MMIMessageType() : 
+{
+	Token value;
+}
+{
+	<MMIMESSAGETYPE> <EQUAL> value=<STRING>
+	{
+		return new MMIMessageType(value.image);	
+	}
+}
+
+IdentitySegment IdentitySegment() : 
+{
+	IdentitySegment identitySegment = new IdentitySegment();
+	AuthServiceId authServiceId;
+	AuthTkn authTkn;
+}
+{
+	IdentityPrefix() authServiceId=AuthServiceId() 
+	{
+		identitySegment.setAuthServiceId(authServiceId);
+	}
+	[(IdentityPrefix() authTkn=AuthTkn())
+	{
+		identitySegment.setAuthTkn(authTkn);
+	}
+	]
+	{
+		return identitySegment;
+	}
+}
+
+void IdentityPrefix() : {}
+{
+	<IDENTITY> <DOT>
+}
+
+AuthServiceId AuthServiceId() : 
+{
+	StringBuffer values=new StringBuffer();
+	Token value;
+	AuthServiceId authServiceId = null;
+	String strValue;
+}
+{
+	<AUTHSERVICEID> <EQUAL> strValue=URI()
+	{
+		try {
+			authServiceId = new AuthServiceId(strValue);
+		} catch (InvalidMMIObjectException imoe) {
+			imoe.printStackTrace();
+		} finally {
+			return authServiceId;
+		}
+	}
+}
+
+AuthTkn AuthTkn() : 
+{
+	Token value;
+	AuthTkn authTkn = null;
+}
+{
+	<AUTHTKN> <EQUAL> value=<STRING>
+	{
+		try {
+			authTkn = new AuthTkn(value.image);
+		} catch(InvalidMMIObjectException imoe) {
+			imoe.printStackTrace();
+		} finally {
+			return authTkn;
+		}
+	}
+}
+
+DeviceSegment DeviceSegment() : 
+{
+	DeviceSegment deviceSegment = new DeviceSegment();
+	LocationId locationId;
+	DeviceId deviceId;
+	Vector<DeviceId> v = new Vector<DeviceId>();
+}
+{
+	DevicePrefix() 
+	(	
+		locationId=LocationId() 
+		{
+			deviceSegment.setLocationId(locationId);
+		}
+		| deviceId=DeviceId() 
+		{
+			v.add(deviceId);
+		}
+	)
+	(
+		DevicePrefix() deviceId=DeviceId() 
+		{
+			v.add(deviceId);
+		}
+	)*
+	{	
+		if(!v.isEmpty()) {
+			deviceSegment.setDeviceId((DeviceId[])v.toArray(new DeviceId[0]));
+		}
+		return deviceSegment;
+	}
+}
+
+void DevicePrefix() : {}
+{
+	<DEVICE> <DOT>
+}
+
+LocationId LocationId() : 
+{
+	Token value;
+}
+{
+	<LOCATIONID> <EQUAL> value=<STRING>	
+	{
+		return new LocationId(value.image);
+	}
+}
+
+DeviceId DeviceId() : 
+{
+	Token value;
+}
+{
+	<DEVICEID> <EQUAL> value=<STRING>
+	{
+		return new DeviceId(value.image);
+	}
+}
+
+RightsSegment RightsSegment() : 
+{
+	RightsSegment rightsSegment = new RightsSegment();
+	ProfileId profileId;
+	MMIRightsRequestElement mmiRightsRequestElement;
+	Vector<MMIRightsRequestElement> v = new Vector<MMIRightsRequestElement>();
+}
+{
+	RightsPrefix() profileId=ProfileId() 
+	{
+		rightsSegment.setProfileId(profileId);	
+	}
+	(
+		/* If there is a parsing error in MMIRightsRequestElement
+		   throw a ParseException with the message "RightsParseError"
+		*/
+		try {
+			mmiRightsRequestElement=MMIRightsRequestElement()
+			{
+				v.add(mmiRightsRequestElement);
+			}
+		} catch (ParseException pe) {
+			throw new ParseException("RightsParseError");
+		}
+	)+
+	{
+		rightsSegment.setMMIRightsRequestElement((MMIRightsRequestElement[])(v.toArray(new MMIRightsRequestElement[0])));
+		return rightsSegment;
+	}
+}
+
+void RightsPrefix() : {}
+{
+	<RIGHTS> <DOT>
+}
+
+ProfileId ProfileId() : 
+{
+	StringBuffer sb = new StringBuffer();
+	Token value;
+}
+{
+	<PROFILEID> <EQUAL> value=<STRING> 
+	{
+		sb.append(value.image);
+	}
+	(
+		<DOT> value=<STRING>
+		{
+			sb.append(".");
+			sb.append(value.image);
+		}
+	)*
+	{
+		return new ProfileId(sb.toString());
+	}
+}
+
+MMIRightsRequestElement MMIRightsRequestElement() : 
+{
+	MMIRightsRequestElement mmiRightsRequestElement = new MMIRightsRequestElement();
+	ReqElemId reqElemId;
+	ContentId contentId;
+	ServiceId serviceId;
+	VerbElement verbElement;
+	Vector<ContentId> v1 = new Vector<ContentId>();
+	Vector<ServiceId> v2 = new Vector<ServiceId>();
+	Vector<VerbElement> v3 = new Vector<VerbElement>();
+}
+{
+	RightsPrefix() reqElemId=ReqElemId() 
+	{
+		mmiRightsRequestElement.setReqElemId(reqElemId);
+	}
+	(
+		(
+			(
+				RightsElemPrefix() contentId=ContentId() 
+				{
+					v1.add(contentId); 
+				}
+			)+ 
+			{
+				mmiRightsRequestElement.setContentId((ContentId[])v1.toArray(new ContentId[0]));
+			}	
+			(
+				RightsElemPrefix() serviceId=ServiceId() 
+				{
+					v2.add(serviceId);
+				}
+			)*
+		) 
+		| 
+		(
+			RightsElemPrefix() serviceId=ServiceId()
+			{
+				v2.add(serviceId);
+			}
+		)+ 
+	) 
+	{
+		if(!v2.isEmpty()) {
+			mmiRightsRequestElement.setServiceId((ServiceId[])v2.toArray(new ServiceId[0]));
+		}
+	}
+	(verbElement=VerbElement() {v3.add(verbElement);})+
+	{
+		mmiRightsRequestElement.setVerbElement((VerbElement[])v3.toArray(new VerbElement[0]));
+		return mmiRightsRequestElement;
+	}
+}
+
+ReqElemId ReqElemId() : 
+{
+	Token value;
+}
+{
+	<REQELEMID> <EQUAL> value=<STRING>
+	{
+		return new ReqElemId(value.image);
+	}
+}
+
+void RightsElemPrefix() : {}
+{
+	RightsPrefix() <STRING> <DOT>
+}
+
+ContentId ContentId() : 
+{
+	Token value;
+	StringBuffer sb = new StringBuffer();
+} 
+{
+	<CONTENTID> <EQUAL> value=<STRING> 
+	{
+		sb.append(value.image);
+	}
+	(
+		<COMMA> value=<STRING> 
+		{
+			sb.append(",");
+			sb.append(value.image);
+		}
+	)*
+	{
+		return new ContentId(sb.toString());
+	}
+}
+
+ServiceId ServiceId() : 
+{
+	Token value;
+}
+{
+	<SERVICEID> <EQUAL> value=<STRING>
+	{
+		return new ServiceId(value.image);
+	}
+}
+
+VerbElement VerbElement() : 
+{
+	VerbElement verbElement = new VerbElement();
+	VerbElementId verbElementId;
+	Verb verb;
+	Count count;
+	Duration duration;
+	Period period;
+	VerbSpecificArgs verbSpecificArgs;
+	Vector<VerbSpecificArgs> v = new Vector<VerbSpecificArgs>();
+}
+{
+	RightsElemPrefix() verbElementId=VerbElementId() 
+	{
+		verbElement.setVerbElementId(verbElementId);
+	}
+	RightsVerbPrefix() verb=Verb()
+	{
+		verbElement.setVerb(verb);
+	} 
+	[
+		(
+			RightsVerbPrefix() count=Count()
+		)
+		{
+			verbElement.setCount(count);
+		}
+	] 
+	[
+		(
+			RightsVerbPrefix() 
+			(
+				duration=Duration() 
+				{
+					verbElement.setDuration(duration);
+				}
+				| 
+				period=Period()
+				{
+					verbElement.setPeriod(period);
+				}
+			)
+		)
+	] 
+	(
+		RightsVerbPrefix() verbSpecificArgs=VerbSpecificArgs()
+		{
+			v.add(verbSpecificArgs);
+		}
+	)*
+	{
+		if(!v.isEmpty()) {
+			verbElement.setVerbSpecificArgs((VerbSpecificArgs[])v.toArray(new VerbSpecificArgs[0]));
+		}
+		return verbElement;
+	}
+}
+
+VerbElementId VerbElementId() : 
+{
+	Token value;	
+}
+{
+	<VERBID> <EQUAL> value=<STRING>
+	{
+		return new VerbElementId(value.image);
+	}
+}
+
+void RightsVerbPrefix() : {}
+{
+	RightsElemPrefix() <STRING> <DOT>
+}
+
+Verb Verb() : 
+{
+	Token value;
+}
+{
+	<VERB> <EQUAL> value=<STRING>
+	{
+		return new Verb(value.image);
+	}
+}
+
+Count Count() : 
+{
+	Token value;
+}
+{
+	<COUNT> <EQUAL> value=<STRING>
+	{
+		return new Count(value.image);
+	}
+}
+
+Duration Duration() : 
+{
+	Token value;
+}
+{
+	<DURATION> <EQUAL> value=<STRING>
+	{
+		return new Duration(value.image);
+	}
+}	
+
+Period Period() : 
+{
+	Token value;
+}
+{
+	<PERIOD> <EQUAL> value=<STRING>
+	{
+		return new Period(value.image);
+	}
+}
+
+VerbSpecificArgs VerbSpecificArgs()	: 
+{
+	VerbSpecificArgs verbSpecificArgs = new VerbSpecificArgs();
+	Token arg;
+	Token value;
+}
+{
+	arg=<STRING> 
+	{
+		verbSpecificArgs.setVerbSpecificArgName(arg.image);
+	}
+	[
+		<EQUAL> 
+		(
+			value=<STRING> 
+			{
+				verbSpecificArgs.setVerbSpecificArgValue(value.image);
+			}
+			| 
+			value=<STRING>
+			{
+				verbSpecificArgs.setVerbSpecificArgValue(value.image);
+			}
+		)
+	]
+	{
+		return verbSpecificArgs;
+	}
+}
+
+SignatureSegment SignatureSegment() : 
+{
+	SignatureSegment signatureSegment = new SignatureSegment();
+	SigAlg sigAlg;
+	Signature signature;
+}
+{
+	SignaturePrefix() sigAlg=SigAlg() 
+	{
+		signatureSegment.setSigAlg(sigAlg);
+	}
+	SignaturePrefix() signature=Signature()
+	{
+		signatureSegment.setSignature(signature);
+	}
+	{
+		return signatureSegment;
+	}
+}
+
+void SignaturePrefix() : {}
+{
+	<SIGNATURE> <DOT>
+}
+
+SigAlg SigAlg() : 
+{
+	String strValue;
+	SigAlg sigAlg = null;
+}
+{
+	<SIGALG> <EQUAL> strValue=URI()
+	{
+		try { 
+			sigAlg = new SigAlg(strValue);
+		} catch (InvalidMMIObjectException imoe) {
+			imoe.printStackTrace();
+		} finally {
+			return sigAlg;
+		}
+	}
+}
+
+Signature Signature() : 
+{
+	Token value;
+}
+{
+	<SIGNATURE> <EQUAL> value=<STRING>
+	{
+		return new Signature(value.image);
+	}
+}
+
+MMIResponse MMIResponse() : 
+{
+	MMIResponse mmiResponse = new MMIResponse();
+	Status status;
+	MMIRightsResponseElement mmiRightsResponseElement;
+	RequestHashSegment requestHashSegment;
+	ResponseId responseId;
+	SignatureSegment signatureSegment;
+	Vector<Status> v1 = new Vector<Status>();
+	Vector<MMIRightsResponseElement> v2 = new Vector<MMIRightsResponseElement>();
+}
+{
+	(status=Status() {v1.add(status);})+ 
+	{
+		mmiResponse.setStatus((Status[])v1.toArray(new Status[0]));
+	}
+	(mmiRightsResponseElement=MMIRightsResponseElement() {v2.add(mmiRightsResponseElement);})+ 
+	{
+		mmiResponse.setMMIRightsResponseElement((MMIRightsResponseElement[])v2.toArray(new MMIRightsResponseElement[0]));
+	}
+	[requestHashSegment=RequestHashSegment() 
+		{
+			mmiResponse.setRequestHashSegment(requestHashSegment);
+		}	
+	] 
+	[responseId=ResponseId()
+		{
+			mmiResponse.setResponseId(responseId);
+		}
+	] 
+	signatureSegment=SignatureSegment()
+	{
+		mmiResponse.setSignatureSegment(signatureSegment);
+		return mmiResponse;	
+	}
+}
+
+Status Status() : 
+{
+	Token token;
+}
+{
+	<STATUS> <EQUAL> token=<STRING>
+	{
+		return new Status(token.image);
+	}
+}
+
+MMIRightsResponseElement MMIRightsResponseElement() : {
+	MMIRightsResponseElement mmiRightsResponseElement = new MMIRightsResponseElement();
+	ReqElemId reqElemId;
+	Notification notification;
+	Hint hint;
+	Keys keys;
+	RightsErrorStatus rightsErrorStatus;
+	Vector<Hint> v1 = new Vector<Hint>();
+	Vector<RightsErrorStatus> v2 = new Vector<RightsErrorStatus>();
+}
+{	
+	ResponsePrefix() reqElemId=ReqElemId() 
+	{
+		mmiRightsResponseElement.setReqElemId(reqElemId);
+	}
+	ResponseElemPrefix() notification=Notification() 
+	{
+		mmiRightsResponseElement.setNotification(notification);
+	}
+	(hint=Hint()
+		{
+			v1.add(hint);
+		}	
+	)* 
+	{
+		if(!v1.isEmpty()) {
+			mmiRightsResponseElement.setHint((Hint[])v1.toArray(new Hint[0]));
+		}
+	}
+	[(ResponseElemPrefix() keys=Keys() 
+		{
+			mmiRightsResponseElement.setKeys(keys);
+		}
+	)]
+	(ResponseElemPrefix() rightsErrorStatus=RightsErrorStatus()
+		{
+			v2.add(rightsErrorStatus);
+		}
+	)* 
+	{
+		if(!v2.isEmpty()) {
+			mmiRightsResponseElement.setRightsErrorStatus((RightsErrorStatus[])v2.toArray(new RightsErrorStatus[0]));
+		}
+		return mmiRightsResponseElement;
+	}
+}
+
+void ResponsePrefix() : {}
+{
+	<RESPONSE> <DOT>
+}
+
+void ResponseElemPrefix() : {}
+{
+	ResponsePrefix() <STRING> <DOT>
+}
+
+Notification Notification() : 
+{
+	Token token;
+}
+{
+	<NOTIFICATION> <EQUAL> token=<STRING>
+	{
+		return new Notification(token.image);
+	}
+}
+
+Hint Hint() : 
+{
+	Hint hint=new Hint();
+	HintIndexNum hintIndexNum;
+	Label label;
+	ContentId contentId;
+	VerbElement verbElement;
+	Vector<ContentId> v1=new Vector<ContentId>();
+	Vector<VerbElement> v2=new Vector<VerbElement>();
+}
+{
+	ResponseHintPrefix() hintIndexNum=HintIndexNum()
+	{
+		hint.setHintIndexNum(hintIndexNum);
+	}
+	ResponseHintIndexPrefix() label=Label() 
+	{
+		hint.setLabel(label);
+	}
+	(ResponseHintIndexPrefix() contentId=ResponseContentId()
+	{
+		v1.add(contentId);
+	}
+	)* 
+	{
+		if(!v1.isEmpty()) {
+			hint.setContentId((ContentId[])v1.toArray(new ContentId[0]));
+		}
+	}
+	(verbElement=ResponseVerbElement()
+	{
+		v2.add(verbElement);
+	}
+	)*
+	{
+		if(!v2.isEmpty()) {
+			hint.setVerbElement((VerbElement[])v2.toArray(new VerbElement[0]));
+		}
+		return hint;
+	}
+}
+
+void ResponseHintPrefix() : {}
+{
+	ResponseElemPrefix() <HINT> <DOT>
+}
+
+HintIndexNum HintIndexNum() : 
+{
+	Token token;
+}
+{
+	<HINTINDEXNUM> <EQUAL> token=<STRING>
+	{
+		return new HintIndexNum(token.image);
+	}
+}
+
+void ResponseHintIndexPrefix() : {}
+{
+	ResponseHintPrefix() <STRING> <DOT>
+}
+
+Label Label() : 
+{
+	Token token;
+}
+{
+	<LABEL> <EQUAL> token=<STRING>
+	{
+		return new Label(token.image);
+	}
+}
+
+ContentId ResponseContentId() : 
+{
+	Token token;
+}
+{
+	<CONTENTID> <EQUAL> token=<STRING>
+	{
+		return new ContentId(token.image);
+	}
+}
+
+VerbElement ResponseVerbElement() : 
+{
+	VerbElement verbElement = new VerbElement();
+	VerbElementId verbElementId;
+	Verb verb;
+	Count count;
+	Duration duration;
+	Period period;
+	VerbSpecificArgs verbSpecificArgs;
+	Vector<VerbSpecificArgs> v = new Vector<VerbSpecificArgs>();
+}
+{
+	ResponseHintIndexPrefix() verbElementId=VerbElementId() 
+	{
+		verbElement.setVerbElementId(verbElementId);
+	}	
+	ResponseHintIndexVerbElemPrefix() verb=Verb() 
+	{
+		verbElement.setVerb(verb);
+	}
+	[(ResponseHintIndexVerbElemPrefix() count=Count()
+		{
+			verbElement.setCount(count);
+		}
+	)] 
+	[(ResponseHintIndexVerbElemPrefix() 
+		(duration=Duration() 
+			{
+				verbElement.setDuration(duration);
+			}
+		| 
+		period=Period()
+			{
+				verbElement.setPeriod(period);
+			}
+		)
+	)] 
+	(ResponseHintIndexVerbElemPrefix() verbSpecificArgs=VerbSpecificArgs()
+		{
+			v.add(verbSpecificArgs);
+		}
+	)*
+	{
+		if(!v.isEmpty()) {
+			verbElement.setVerbSpecificArgs((VerbSpecificArgs[])v.toArray(new VerbSpecificArgs[0]));
+		}
+		return verbElement;
+	}
+}
+
+void ResponseHintIndexVerbElemPrefix() : {}
+{
+	ResponseHintIndexPrefix() <STRING> <DOT>
+}
+
+Keys Keys() : 
+{
+	String strToken;
+}
+{
+	<KEYS> <EQUAL> strToken=KEY()
+	{
+		return new Keys(strToken);
+	}
+}
+
+RightsErrorStatus RightsErrorStatus() : 
+{
+	Token token;
+}
+{
+	<STATUS> <EQUAL> token=<STRING>
+	{
+		return new RightsErrorStatus();
+	}	
+}
+
+RequestHashSegment RequestHashSegment() : 
+{
+	HashAlg hashAlg;
+	RequestHash requestHash;
+	RequestHashSegment requestHashSegment = new RequestHashSegment();
+}
+{
+	ReqHashPrefix() hashAlg=HashAlg() 
+	{
+		requestHashSegment.setHashAlg(hashAlg);
+	}
+	ReqHashPrefix() requestHash=RequestHash()
+	{
+		requestHashSegment.setRequestHash(requestHash);
+		return requestHashSegment;
+	}
+}
+
+void ReqHashPrefix() : {}
+{
+	<REQHASH> <DOT>
+}
+
+HashAlg HashAlg() : 
+{
+	String strToken;
+}
+{
+	<HASHALG> <EQUAL> strToken=URI()
+	{
+		return new HashAlg(strToken);
+	}
+}
+
+RequestHash RequestHash() : 
+{
+	Token token;
+}
+{
+	<REQUESTHASH> <EQUAL> token=<STRING>
+	{
+		return new RequestHash(token.image);
+	}
+}
+
+
+ResponseId ResponseId() : 
+{
+	Token token;
+}
+{
+	<RESPONSEID> <EQUAL> token=<STRING>
+	{
+		return new ResponseId(token.image);
+	}
+}

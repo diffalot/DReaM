@@ -1,0 +1,24 @@
+<html>
+<head>
+<title>Build and install the License Server</title>
+</head>
+<body>
+<h1>License Server</h1>
+<h2>Building and Deploying</h2>
+<p>
+The license server can be build by using the ant build script or by using netbeans. To use ant build script configure please follow the configuration steps <a href="configureAnt.html"> here </a>. Once ant has been configured run "ant -p" to list the ant targets that can be used to build, dynamically deploy and create a war for the application. To use netbeans please follow steps <a href="configureNetbeans.html"> here </a> to create a netbeans project </a> Once a netbeans project has been created you can build and deploy the web app by using the netbeans menu options.
+</p>
+<p>To create a war file required for distributing the web app use "ant dist"</p>
+<h2>Databse</h2>
+<p>
+The web application uses a databases. It has been tested to run with pointbase. Please start pointbase before deploying this application to use it.  
+</p>
+<p>
+Please edit the file $LICENSESERVER_SRC_HOME/web/WEB-INF/conf/lincese-server.xml to change the database URL, username and password. The application will automatically create the tables required by it in the database specified in the license-server.xml configuration file.
+</p> 
+<h2>Opera Proxy</h2>
+The application uses opera proxy for sending license release requests to the opera server. Edit the  file $LICENSESERVER_SRC_HOME/web/WEB-INF/conf/lincese-server.xml to specify the opera proxy URL.
+<h2>JCE provider</h2>
+The application uses JCE for cryptography. For the JCE code to work a JCE provder should be installed in your jre. The code has been tested with bouncycastl's (tp://www.bouncycastle.org) JCE provider.
+</body>
+</html>

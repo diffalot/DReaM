@@ -1,0 +1,175 @@
+domain "libcobjs.so.1"
+# File:Log.c, line:90
+msgid  "../lib/locale"
+msgstr
+# File:Log.c, line:91
+msgid  "../locale"
+msgstr
+# File:Actor.c, line:68
+msgid  ""
+msgstr
+# File:SortTable.c, line:577
+msgid  "\n\n\n\n"
+msgstr
+# File:RetCode.c, line:49
+msgid  "                                                      "
+msgstr
+# File:RetCode.c, line:227
+msgid  " * Errors for class %s"
+msgstr
+# File:RetCode.c, line:230
+msgid  " */"
+msgstr
+# File:RetCode.c, line:204
+msgid  "%.30s: %s"
+msgstr
+# File:MetricIo.c, line:55
+msgid  "%8.3f %s "
+msgstr
+# File:MetricIo.c, line:49
+msgid  "%8.3f G%s"
+msgstr
+# File:MetricIo.c, line:53
+msgid  "%8.3f K%s"
+msgstr
+# File:MetricIo.c, line:51
+msgid  "%8.3f M%s"
+msgstr
+# File:MetricIo.c, line:45
+msgid  "%8.3f P%s"
+msgstr
+# File:MetricIo.c, line:47
+msgid  "%8.3f T%s"
+msgstr
+# File:MetricIo.c, line:57
+msgid  "%8.3f m%s"
+msgstr
+# File:MetricIo.c, line:61
+msgid  "%8.3f n%s"
+msgstr
+# File:MetricIo.c, line:63
+msgid  "%8.3f p%s"
+msgstr
+# File:MetricIo.c, line:59
+msgid  "%8.3f u%s"
+msgstr
+# File:MetricIo.c, line:43
+msgid  "%8.3g %s "
+msgstr
+# File:Time.c, line:509
+msgid  "%ld:%02ld:%06.3f"
+msgstr
+# File:Log.c, line:145
+msgid  "%s"
+msgstr
+# File:Log.c, line:119
+msgid  "%s\n"
+msgstr
+# File:Log.c, line:268
+msgid  "%s  %s@%d: %s"
+msgstr
+# File:RetCode.c, line:243
+msgid  "%s%s%s = 0x%06lx,  /* %s */"
+msgstr
+# File:Package.c, line:162
+msgid  "%s/%s"
+msgstr
+# File:Log.c, line:86
+msgid  ".."
+msgstr
+# File:RetCode.c, line:226
+msgid  "/*"
+msgstr
+# File:Package.c, line:158
+msgid  ":"
+msgstr
+# File:Log.c, line:179
+msgid  ": %s"
+msgstr
+# File:Option.c, line:239
+msgid  "<NULL>"
+msgstr
+# File:Log.c, line:40
+msgid  "ABORT"
+msgstr
+# File:Log.c, line:41
+msgid  "ASSERT FAILED"
+msgstr
+# File:RetCode.c, line:53
+msgid  "FAILED"
+msgstr
+# File:Doors.c, line:305
+msgid  "FATAL: fattach(%s)"
+msgstr
+# File:Doors.c, line:297
+msgid  "FATAL: open(%s)"
+msgstr
+# File:Thread.c, line:98
+msgid  "FATAL: priocntl()"
+msgstr
+# File:Log.c, line:62
+msgid  "Illegal debug mask flag: %c"
+msgstr
+# File:Log.c, line:56
+msgid  "Illegal stamp mask flag: %c"
+msgstr
+# File:Package.c, line:150
+msgid  "PATH"
+msgstr
+# File:RetCode.c, line:71
+msgid  "RetCode Global"
+msgstr
+# File:Log.c, line:42
+msgid  "STMT FAILED"
+msgstr
+# File:SortTable.c, line:565
+msgid  "SortTable Contents:\n\n"
+msgstr
+# File:MetricIo.c, line:38
+msgid  "UNITS TOO LONG"
+msgstr
+# File:Thread.c, line:109
+msgid  "WARNING: priocntl()"
+msgstr
+# File:Macros.c, line:57
+msgid  "calloc: out of memory @ %s,%d: alloc %s[%d] (%d:%d)\n"
+msgstr
+# File:Package.c, line:201
+msgid  "dlclose: %s"
+msgstr
+# File:Package.c, line:117
+msgid  "dlinfo: %s"
+msgstr
+# File:Package.c, line:113
+msgid  "dlopen: %s"
+msgstr
+# File:SortTable.c, line:567
+msgid  "empty tree\n"
+msgstr
+# File:RetCode.c, line:128
+msgid  "invalid RetCodeTable: %s\n"
+msgstr
+# File:Doors.c, line:297
+msgid  "libcobjs.so.1"
+msgstr
+# File:Macros.c, line:39
+msgid  "malloc: out of memory @ %s,%d: alloc %s[%d] (%d:%d)\n"
+msgstr
+# File:Package.c, line:173
+msgid  "packageHome: %s: couldn't determine exec dir"
+msgstr
+# File:Package.c, line:134
+msgid  "packageHome: couldn't find dlinfo for %s"
+msgstr
+# File:Package.c, line:184
+msgid  "realPath: %s"
+msgstr
+# File:Macros.c, line:75
+msgid  "realloc: out of memory @ %s,%d: alloc %s[%d] (%d:%d)\n"
+msgstr
+# File:RetCode.c, line:53
+msgid  "unspecified failure"
+msgstr
+# File:RetCode.c, line:285
+msgid  "{%s%s,%s \"%s\"},"
+msgstr

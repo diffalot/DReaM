@@ -1,0 +1,39 @@
+SOURCE Instructions
+-------------------
+Download the source files from the dream cvs.
+
+An additional file must be downloaded from openssh.com. 
+
+The file provide aes counter mode support and may be obtained from:
+http://www.openbsd.org/cgi-bin/cvsweb/~checkout~/src/usr.bin/ssh/cipher-ctr.c?rev=1.6
+
+Note that the version number of the file is "revision 1.6" in the openssh.com CVS.
+
+This file must be altered in the followig way:
+- Remove "includes.h" and RCISD reference at the top of the file.
+- Include <string.h> which provides prototypes for memcpy and memset.
+- Remove all references to xmalloc and xfree (xmalloc.h) since these headers are not
+  available in the DReaM source distribution. Use the regular malloc and free
+  instead.
+- Remove all references to functions from log.h, such as fatal(). Replace with
+  your own fatal error handler function call.
+- In the evp_aes_128_ctr function change the aes_ctr.block_size value to 1 from
+  AES_BLOCK_SIZE.
+
+BUILD Instructions
+------------------
+(1) Ensure that openssl (0.9.7f preferrably) is installed on the system
+(Openssl must be downloaded and installed separately and is not distributed
+with this package.)
+
+(2) Install libtools and autotools on your system. Then execute 
+# ./bootstrap
+
+(3) Execute configure to generate the Makefiles
+# ./configure --with-openssl=<openssl-install-path> [--prefix=<some-path>]
+
+(4) Execute "make" to build the files
+# make
+
+(5) Do a "make install" to install the headers and the libraries 
+# make install 

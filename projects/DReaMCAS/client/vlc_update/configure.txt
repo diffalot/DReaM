@@ -1,0 +1,27 @@
+#Must have these fields
+
+# Name of the license server
+LicenseServer  = headend-238
+
+# Name of the private key file.
+PrivateKeyFile = ./private.key
+
+# Name of the file used to temporary store the license file.
+LicenseName    =  ./MyLicense.emm
+
+# port number of where the LicenseServer is running.
+PortNumber     = 8080
+
+# default action to perform when interacting with the DReaM License server
+# Change this only if you know what you are doing.
+# Action = /DReaMLicenseServer/LicenseServer
+Action = /DReaMLicensor/LicenseServer
+
+# filename of local rights repository
+RepoPath = ./.mmirepo
+
+# field in the url that corresponds to the content_id
+ContentIdField = content_id
+
+# debug flag
+Debug = false

@@ -1,0 +1,64 @@
+<project name="MMIRightsManager" default="all" basedir=".">
+
+    <!-- Edit these -->
+    <property name="install-dir"            value="./_INSTALL" />
+    <!-- End Edit   -->
+ 
+    <property name="project-jar"                value="MMIRightsManager.jar"/> 
+    <property name="source-java-dir" 		    value="src/java" />
+    <property name="output-dir" 				value="build" />
+    <property name="output-classes-dir" 	    value="${output-dir}/classes" />
+    <property name="output-jars-dir"            value="${output-dir}/libs/java" />
+    <property name="input-jars-dir"             value="libs/java" />
+    <property name="mmi-common-dep-jar"         value="MMICommon.jar" />
+    <property name="dep-jars" value="${input-jars-dir}/${mmi-common-dep-jar}" />
+    <property name="build-jar" value="${output-jars-dir}/${project-jar}" />
+
+	<target name="clean">
+		<delete dir="${output-classes-dir}" />
+        <delete dir="${output-jars-dir}" />
+		<delete dir="${output-dir}" />
+	</target>
+
+	<target name="prepare">
+		<mkdir dir="${output-dir}" />
+		<mkdir dir="${output-classes-dir}" />
+        <mkdir dir="${output-jars-dir}" /> 
+	</target>
+
+    <target name="configure">
+        <condition property="input-jars-found">
+            <and>
+                <available file="${dep-jars}"/>
+            </and>
+        </condition>
+        <fail unless="input-jars-found">
+        
+        Cannot find ${dep-jars}. This must be copied/linked from DReaMMMI/common project directory)
+        
+        </fail>
+    </target>
+
+    <target name="all" depends="create-jar" />
+    
+	<target name="compile" depends="prepare,configure">
+        <!-- Classpath must refer to jars in filesrc_netsink1 and
+             filesrc_netsink2 -->
+		<javac srcdir="${source-java-dir}" destdir="${output-classes-dir}" 
+               classpath="${dep-jars}"/>
+	</target>
+
+	<target name="create-jar" depends="compile">
+		<jar destfile="${build-jar}" basedir="${output-classes-dir}"/>
+	</target>
+
+    <target name="install-jars" depends="create-jar">
+        <copy file="${build-jar}" todir="${install-dir}/lib"/>
+        <copy file="${dep-jars}" todir="${install-dir}/lib"/>
+        <echo>
+         Add these jar files to your classpath using:
+         export CLASSPATH=${install-dir}/lib/${mmi-common-dep-jar}:${install-dir}/lib/${project-jar}
+        </echo>
+    </target>
+
+</project>

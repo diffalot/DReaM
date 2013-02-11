@@ -1,0 +1,9 @@
+DReaM/DReaMMI/common/README
+
+This directory contains the source for the DReaM-MMI protocol which is used in
+the DReaM architecture by a DRM client to ascertain rights from a rights server.
+
+Please refer to the INSTALL document for building the library.  
+
+The source for a sample client which utilizes the DReaM-MMI API can be found in
+DReaM/DReaMMMI/tests/client.

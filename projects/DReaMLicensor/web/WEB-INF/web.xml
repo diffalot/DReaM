@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+ The contents of this file are subject to the terms
+ of the Common Development and Distribution License
+ (the "License").  You may not use this file except
+ in compliance with the License.
+
+ You can obtain a copy of the license at
+ http://www.opensource.org/licenses/cddl1.php
+ See the License for the specific language governing
+ permissions and limitations under the License.
+
+ When distributing Covered Code, include this CDDL
+ HEADER in each file and include the License file at
+ http://www.opensource.org/licenses/cddl1.php.  If 
+ applicable, add the following below this CDDL HEADER, 
+ with the fields enclosed by brackets "[]" replaced 
+ with your own identifying information: 
+ Portions Copyright [yyyy]
+ [name of copyright owner]
+--> 
+
+<!--
+ $(@)web.xml $Revision: 1.2 $ $Date: 2006/04/06 21:39:42 $
+
+ Copyright 2006 Sun Microsystems, Inc. All Rights Reserved.
+-->
+
+<web-app version="2.4" xmlns="http://java.sun.com/xml/ns/j2ee" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://java.sun.com/xml/ns/j2ee http://java.sun.com/xml/ns/j2ee/web-app_2_4.xsd">
+  <servlet>
+    <servlet-name>LoggerInit</servlet-name>
+    <servlet-class>com.sun.licenseserver.LoggerInit</servlet-class>
+    <load-on-startup>1</load-on-startup>
+  </servlet>
+  <servlet>
+    <servlet-name>LicenseServer</servlet-name>
+    <servlet-class>com.sun.licenseserver.LicenseServer</servlet-class>
+  </servlet>
+  
+  <servlet-mapping>
+    <servlet-name>LoggerInit</servlet-name>
+    <url-pattern>/LoggerInit</url-pattern>
+  </servlet-mapping>
+  <servlet-mapping>
+    <servlet-name>LicenseServer</servlet-name>
+    <url-pattern>/LicenseServer</url-pattern>
+  </servlet-mapping>
+  
+  <session-config>
+    <session-timeout>
+            30
+        </session-timeout>
+  </session-config>
+  <welcome-file-list>
+    <welcome-file>
+            index.jsp
+        </welcome-file>
+    <welcome-file>
+            index.html
+        </welcome-file>
+    <welcome-file>
+            index.htm
+        </welcome-file>
+  </welcome-file-list>
+</web-app>

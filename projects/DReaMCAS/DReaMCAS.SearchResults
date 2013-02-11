@@ -1,0 +1,7 @@
+---- generate_key Matches (6 in 3 files) ----
+Crypto.c (common\ca_crypto):int generate_key (unsigned char* val, int size)
+Crypto.h (common\ca_crypto):int generate_key (unsigned char* val, int size);
+Main.c (ingest\apps\cas_encrypt):    generate_key(p_emm->iv, BLOCK_SIZE);
+Main.c (ingest\apps\cas_encrypt):    generate_key(p_emm->key, KEY_LENGTH);
+Main.c (ingest\apps\cas_encrypt):    generate_key(p_ecm->iv, BLOCK_SIZE);
+Main.c (ingest\apps\cas_encrypt):    generate_key(p_ecm->key, KEY_LENGTH);

@@ -1,0 +1,52 @@
+Make test case for Compiler bug in Time routines.
+
+Test new List and Deque -- especially growth code.
+
+Change 32 bit types to be typedef'ed as long.
+
+Modify SortTable to eliminate internal nodes, this will allow more
+flexibility in keyDup (can utilize refs into value), and will make
+Remove work when duplicate nodes are present.
+==> Better yet, just implement this as a 4-entry B-tree.
+
+Create queueing log manager so real-time threads can log without waiting
+for i/o.
+
+Define a StatMgr that handles exponentially decaying values.
+
+Add formatter to Time that converts time to a string.
+
+Make sure all args that can be declared const are.
+
+Convert all callbacks to use doneMethod(Object delegate, ...) terminology
+
+Write threadSetName() and threadGetName()
+
+Have thread-specific flag that indicates appropriate behavior in ckAlloc on
+allocation failure.  The choices are return NULL or abort.
+
+Integrate all objects with memory allocator to recover excess space when low
+on memory.
+
+Make sure everyone uses timeFromBoot() where appropriate.
+
+Iteration method names should be consistent (sortTable uses Head/Tail,
+others use First/Last).
+    OBJECT ACTIONS (Follow object): Put, Get;   e.g. listPutFirst()
+    ITER ACTIONS: (Follow iter): Next, Prev; e.g. listIterNext()
+    OBJECT/ITER/REF ACTIONS: Find, Remove, Replace; listFind(),
+	listIterFind(), listRefRemove()
+    ADVERBS (Follow and Qualify Actions): First, Last; Before, After;
+	listPutFirst(), listIterPutBefore()
+    PROPERTIES (Follow object): Length, Size; IsValid, Value, Key,
+	listLength(), listIterKey(), listIterIsValid()
+    Order: SubjectActionAdverb, SubjectProperty
+	listPutFirst(), listIterPutBefore(), listLength()
+
+Have all item comparisons done with KeyCmp routines (fix HashTable to
+use KeyCmp rather than KeyIsEqual)
+
+Write Hash, Cmp, and Dup functions for String.
+
+Make QUEUE interface.  Have Actor accept QUEUE to allow client specifiable
+action queuing.

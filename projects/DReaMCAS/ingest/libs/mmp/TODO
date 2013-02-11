@@ -1,0 +1,69 @@
+Fix bug where peek 4, get 1 loop will cause data to continually come
+from resid buffer (if resid buffer will fit back into next buffer, copy
+it there.)
+
+Add code to turn CRC checks on and off in Mpeg2Pat and Mpeg2Pmt, then
+if Crc's are on call pipeCrcClear calls in right places.
+
+Verify all free's and pipe cleanup.
+
+Move free routines up by new routines.
+
+Make parser object in MpegDump.c
+
+Return relative position in info for parsers where it makes sense
+	(e.g. ES, PSI's)
+
+Add bit-level put routines to Pipe.
+
+Make sure all stuff bytes are now skipped with pipeSkipStuffBytes()
+
+Put source in more hierarchical structure:
+	mmp
+
+	mpeg
+
+	mpeg1    mpeg2
+
+Make includes follow this path, too
+
+Variable Naming Guidelines
+	Map field names by mapping all upper case letters to lower case,
+	eliminating _, and capitalizing letter after _
+
+	Fields which have a defined bit pattern are named, b0000,
+	where 0000 represents the binary bit pattern msb-first.
+
+	Duplicate field names are resolved by appending an _1,
+	_2, etc.  (For markerBit fields, b000 fields, etc).
+
+	Fields that span multiple bytes are broken into segments
+	that are contained within a single byte, each subfield is
+	named by appending a _ separated first bit, last bit
+	specification (e.g. programClockReference23_16)
+
+	Types are named by either mpeg parser descriptor name
+	prefixed by module name (e.g. MpegTs), or if no mpeg
+	parser given, by name of controlling flag.  Names are
+	constructed like field names except initial letter is
+	capitalized.
+
+	Function macros are named by prefix with all caps associated
+	type name with words separated by _ followed by field name
+	on which they operate.
+
+	Enum elements are named by mapping type name to all caps,
+	separating words by _,  then appending a descriptive identifier
+	follow the same conventions.
+
+	Value macros are named by mapping the type name to which they
+	apply to all caps, separating words by _ and then followed by
+	the field name to which they apply, finally followed by a
+	descriptive identifier.
+
+	Types which are not complete definitions of the corresponding
+	Mpeg type (because of variable length fields, payloads, etc)
+	should have a comment indicating the missing data.
+
+	In all cases where duplicate words show up in names, the
+	duplicate words may be eliminated

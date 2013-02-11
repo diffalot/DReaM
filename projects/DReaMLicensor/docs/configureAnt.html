@@ -1,0 +1,24 @@
+<html>
+<head>
+<title>Configure Ant Build script</title>
+</head>
+<body>
+<h2>Configuring Ant for LicenseServer</h2>
+<p>
+This document describes the configuration steps that need to be taken to effectively use the ant build script in this project. The ant build script can be used to build the web application, create a war that can be used to deploy the application and to dynamically install/uninstall the web application into tomcat. To use the ant build script please perform the configuration tasks below:
+</p>
+<ul>
+<li> Modify the ant installation to include the .jar files that provide the ant tasks for dynamically installing and uninstalling web applications into tomcat. This is done by by copying the file "server/lib/catalina-ant.jar" from your Tomcat 5 installation into the "lib" directory of your Ant installation </li>
+<p id="code">cp $CATALINA_HOME/server/lib/catalina-ant.jar $ANT_HOME/lib/.</p>
+<li> Edit the build.properties file to provide the tomcat's location and the tomcat manager applications username and password. </li>
+</ul>
+<p>
+You may have to configure the tomcat manager application. This can be done by editing the $CATALINA_HOME/conf/tomcat-users.xml. Follow the steps below to configure tomcat's manager application:
+</p>
+<ul>
+ <li>Edit the file to add a role called manager. This can be done by adding the line below to the file:<br/>
+ &lt;role rolename="manager"/&gt;  </li>
+<li> Add the role manager to a user. This can be done by adding string manager to the attribute roles of a user. This username and its password should be provided in the build.properties file.</li>
+</ul>
+</body>
+</html>
