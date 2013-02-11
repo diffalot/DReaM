@@ -18,6 +18,8 @@ http://web.archive.org/web/20090314064903/http://openmediacommons.org/projects.h
 
 http://web.archive.org/web/20090516173937/http://www.openmediacommons.org/documentation.html
 
+http://creativecommons.org/weblog/entry/8080
+
 # Missing Items
 
 The actual specs.
