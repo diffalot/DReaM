@@ -1,5 +1,11 @@
 # Collected Materials related to [Sun's Project DReaM](http://en.wikipedia.org/wiki/Project_DReaM)
 
+It is my understanding that all of these items were originally
+provided under open source licenses, if any of these materials
+are not free for redistribution, please email a DMCA takedown
+request to papyromancer@gmail.com and I will filter all traces of
+the infringement from this repository.
+
 # References
 
 http://www.codeforge.com/s/0/dream
